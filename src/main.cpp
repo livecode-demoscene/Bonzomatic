@@ -398,6 +398,7 @@ int main( int argc, const char * argv[] )
   mDebugOutput.SetText( "" );
   mDebugOutput.SetReadOnly( true );
 
+ 
   static float fftData[ FFT_SIZE ];
   memset( fftData, 0, sizeof( float ) * FFT_SIZE );
   static float fftDataSmoothed[ FFT_SIZE ];
@@ -414,6 +415,20 @@ int main( int argc, const char * argv[] )
   float fLastTimeMS = Timer::GetTime();
 
   Network::Init();
+  ShaderEditor mNetworkStatus(surface);
+  if (!Network::IsOffline()) {
+    // Network Handle  
+    editorOptions.rect = Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - 100, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin, settings.sRenderer.nHeight - nMargin);
+    editorOptions.nFontSize *= 2.5;
+    mNetworkStatus.Initialise(editorOptions);
+    mNetworkStatus.SetReadOnly(true);
+
+    std::string handle = "totetmatt";
+    mNetworkStatus.SetText(handle.c_str());
+    int fontWidth = surface->WidthText(*mNetworkStatus.GetTextFont(), handle.c_str(), (int)handle.length()) * 1.1;
+    mNetworkStatus.SetPosition(Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - fontWidth, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin, settings.sRenderer.nHeight - nMargin - 50 + editorOptions.nFontSize));
+
+  }
 
   while ( !Renderer::WantsToQuit() )
   {
@@ -426,16 +441,17 @@ int main( int argc, const char * argv[] )
     {
       if ( bShowGui )
       {
+        
         switch ( Renderer::mouseEventBuffer[ i ].eventType )
         {
           case Renderer::MOUSEEVENTTYPE_MOVE:
             mShaderEditor.ButtonMovePublic( Scintilla::Point( Renderer::mouseEventBuffer[ i ].x, Renderer::mouseEventBuffer[ i ].y ) );
             break;
           case Renderer::MOUSEEVENTTYPE_DOWN:
-            mShaderEditor.ButtonDown( Scintilla::Point( Renderer::mouseEventBuffer[ i ].x, Renderer::mouseEventBuffer[ i ].y ), time * 1000, false, false, false );
+            if(!Network::IsGrabber()) mShaderEditor.ButtonDown( Scintilla::Point( Renderer::mouseEventBuffer[ i ].x, Renderer::mouseEventBuffer[ i ].y ), time * 1000, false, false, false );
             break;
           case Renderer::MOUSEEVENTTYPE_UP:
-            mShaderEditor.ButtonUp( Scintilla::Point( Renderer::mouseEventBuffer[ i ].x, Renderer::mouseEventBuffer[ i ].y ), time * 1000, false );
+            if(!Network::IsGrabber()) mShaderEditor.ButtonUp( Scintilla::Point( Renderer::mouseEventBuffer[ i ].x, Renderer::mouseEventBuffer[ i ].y ), time * 1000, false );
             break;
           case Renderer::MOUSEEVENTTYPE_SCROLL:
             if ( Renderer::mouseEventBuffer[ i ].ctrl )
@@ -445,7 +461,7 @@ int main( int argc, const char * argv[] )
             }
             else
             {
-              mShaderEditor.WndProc( SCI_LINESCROLL, (int) ( -Renderer::mouseEventBuffer[ i ].x * fScrollXFactor ), (int) ( -Renderer::mouseEventBuffer[ i ].y * fScrollYFactor ) );
+              if (!Network::IsGrabber()) mShaderEditor.WndProc( SCI_LINESCROLL, (int) ( -Renderer::mouseEventBuffer[ i ].x * fScrollXFactor ), (int) ( -Renderer::mouseEventBuffer[ i ].y * fScrollYFactor ) );
             }
             break;
         }
@@ -470,6 +486,7 @@ int main( int argc, const char * argv[] )
           mDebugOutput.SetPosition( Scintilla::PRectangle( nMargin, settings.sRenderer.nHeight - nMargin - nDebugOutputHeight, settings.sRenderer.nWidth - nMargin - nTexPreviewWidth - nMargin, settings.sRenderer.nHeight - nMargin ) );
           bTexPreviewVisible = true;
         }
+        
       }
       else if ( Renderer::keyEventBuffer[ i ].scanCode == FKEY( 5 ) || ( Renderer::keyEventBuffer[ i ].ctrl && Renderer::keyEventBuffer[ i ].scanCode == 'r' ) ) // F5
       {
@@ -500,7 +517,7 @@ int main( int argc, const char * argv[] )
       {
         bShowGui = !bShowGui;
       }
-      else if ( bShowGui )
+      else if ( bShowGui && !Network::IsGrabber())
       {
         bool consumed = false;
         if ( Renderer::keyEventBuffer[ i ].scanCode )
@@ -523,7 +540,7 @@ int main( int argc, const char * argv[] )
       }
     }
 
-    Network::UpdateShader(&mShaderEditor, time);
+    Network::UpdateShader(&mShaderEditor, time, &midiRoutes);
 
     Renderer::keyEventBufferCount = 0;
     if (Network::ReloadShader()) {
@@ -595,11 +612,13 @@ int main( int argc, const char * argv[] )
       {
         mShaderEditor.Tick();
         mDebugOutput.Tick();
+        if(!Network::IsOffline()) mNetworkStatus.Tick();
         fNextTick = time + 0.1;
       }
 
       mShaderEditor.Paint();
       mDebugOutput.Paint();
+      if (!Network::IsOffline()) mNetworkStatus.Paint();
 
       Renderer::SetTextRenderingViewport( Scintilla::PRectangle( 0, 0, Renderer::nWidth, Renderer::nHeight ) );
 
@@ -629,8 +648,13 @@ int main( int argc, const char * argv[] )
       sHelp += szLayout;
       surface->DrawTextNoClip( Scintilla::PRectangle( 20, Renderer::nHeight - 20, 100, Renderer::nHeight ), *mShaderEditor.GetTextFont(), Renderer::nHeight - 5.0, sHelp.c_str(), (int) sHelp.length(), 0x80FFFFFF, 0x00000000 );
     }
+    if(bShowGui && !Network::IsOffline()){ // Activity Square
+      int TexPreviewOffset = bTexPreviewVisible ? nTexPreviewWidth + nMargin : 0;
+      std::string Status = "totetmatt";
+      int fontWidth = surface->WidthText(*mNetworkStatus.GetTextFont(), Status.c_str(), (int)Status.length()) * 1.1;
+      surface->RectangleDraw(Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - fontWidth-10, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin - fontWidth, settings.sRenderer.nHeight - nMargin - 50 + editorOptions.nFontSize), 0x00000000, 0xff8080FF);
 
-
+    }
     Renderer::EndTextRendering();
 
     Renderer::EndFrame();
