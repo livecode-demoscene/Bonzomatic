@@ -175,7 +175,7 @@ namespace Network {
     else if(config.Mode == GRABBER) {
       filename = SHADER_FILENAME("grabber");
     }
-    *shaderName = _strdup(filename.c_str());
+    *shaderName = strdup(filename.c_str());
   }
   void UpdateShader(ShaderEditor* mShaderEditor, float shaderTime, std::map<int, std::string> *midiRoutes) {
     if (Network::config.Mode != Network::NetworkMode::OFFLINE) { // If we arn't offline mode
@@ -261,7 +261,7 @@ namespace Network {
     if (IsSender()) {
       newName = title + " sender " + user;
     }
-    *originalTitle = _strdup(newName.c_str());
+    *originalTitle = strdup(newName.c_str());
   }
   /* From here are methods for parsing json */
   void ParseNetworkGrabMidiControls(jsonxx::Object * network) {
@@ -324,7 +324,7 @@ namespace Network {
       return;
     }
    
-    config.Url = _strdup(network->get<jsonxx::String>("serverURL").c_str());
+    config.Url = strdup(network->get<jsonxx::String>("serverURL").c_str());
 
     ParseNetworkMode(network);
 
@@ -344,7 +344,7 @@ namespace Network {
       config.Url = "";
       // As we can activate this on setup dialog, let's try to get serverURL
       if (network->has<jsonxx::String>("serverURL")) {
-        config.Url = _strdup(network->get<jsonxx::String>("serverURL").c_str());
+        config.Url = strdup(network->get<jsonxx::String>("serverURL").c_str());
       }
       return;
     }
