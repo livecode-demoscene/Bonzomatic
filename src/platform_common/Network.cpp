@@ -117,10 +117,10 @@ namespace Network {
 
       // printf("GOT ECHO REPLY: [%.*s]\n", (int)wm->data.len, wm->data.buf);
     }
-
-    /*/if (ev == MG_EV_ERROR || ev == MG_EV_CLOSE || ev == MG_EV_WS_MSG) {
-      *(bool*)c->fn_data = true;  // Signal that we're done
-    }*/
+    else if (ev == MG_EV_ERROR || ev == MG_EV_CLOSE ) {
+      connected = false;
+      printf("Error\n");
+    }
   }
 
   void Create() {
@@ -245,6 +245,9 @@ namespace Network {
   }
   bool IsOffline() {
     return config.Mode == OFFLINE;
+  }
+  bool IsConnected() {
+    return connected;
   }
   void GenerateWindowsTitle(char** originalTitle) {
     if (IsOffline()) {

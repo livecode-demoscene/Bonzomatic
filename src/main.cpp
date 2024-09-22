@@ -385,7 +385,7 @@ int main( int argc, const char * argv[] )
 
   int nMargin = 20;
 
-  bool bTexPreviewVisible = true;
+  bool bTexPreviewVisible = false;
 
   editorOptions.rect = Scintilla::PRectangle( nMargin, nMargin, settings.sRenderer.nWidth - nMargin - nTexPreviewWidth - nMargin, settings.sRenderer.nHeight - nMargin * 2 - nDebugOutputHeight );
   ShaderEditor mShaderEditor( surface );
@@ -648,7 +648,7 @@ int main( int argc, const char * argv[] )
       sHelp += szLayout;
       surface->DrawTextNoClip( Scintilla::PRectangle( 20, Renderer::nHeight - 20, 100, Renderer::nHeight ), *mShaderEditor.GetTextFont(), Renderer::nHeight - 5.0, sHelp.c_str(), (int) sHelp.length(), 0x80FFFFFF, 0x00000000 );
     }
-    if(bShowGui && !Network::IsOffline()){ // Activity Square
+    if(bShowGui && !Network::IsOffline() && !Network::IsConnected()){ // Activity Square
       int TexPreviewOffset = bTexPreviewVisible ? nTexPreviewWidth + nMargin : 0;
       std::string Status = "totetmatt";
       int fontWidth = surface->WidthText(*mNetworkStatus.GetTextFont(), Status.c_str(), (int)Status.length()) * 1.1;

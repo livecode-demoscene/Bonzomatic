@@ -56,6 +56,7 @@ namespace Network {
     bool IsGrabber();
     bool IsSender();
     bool IsOffline();
+    bool IsConnected();
     void GenerateWindowsTitle(char** originalTitle);
 }
 #endif // BONZOMATIC_NETWORK_H
