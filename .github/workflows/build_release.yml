@@ -33,8 +33,9 @@ jobs:
       run: |
         curl ${{ secrets.NDI_SDK_URL }} -o ndisdk.exe
         echo "Installing NDI SDK..."
-        ./ndisdk.exe /VERYSILENT /ALLUSERS
+        ./ndisdk.exe /ALLUSERS /DIR="${{ env.NDI_SDK_DIR }}"
         echo "Waiting for NDI SDK to finish installing..."
+        dir "${{ env.NDI_SDK_DIR }}"
         Wait-Process -Name "ndisdk"
         echo "Done!"
     - name: Checkout
