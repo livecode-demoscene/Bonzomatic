@@ -416,6 +416,7 @@ int main( int argc, const char * argv[] )
 
   Network::Init();
   ShaderEditor mNetworkStatus(surface);
+  int networkHandleFontWidth;
   if (!Network::IsOffline()) {
     // Network Handle  
     editorOptions.rect = Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - 100, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin, settings.sRenderer.nHeight - nMargin);
@@ -423,18 +424,19 @@ int main( int argc, const char * argv[] )
     mNetworkStatus.Initialise(editorOptions);
     mNetworkStatus.SetReadOnly(true);
 
-    std::string handle = "totetmatt";
-    mNetworkStatus.SetText(handle.c_str());
-    int fontWidth = surface->WidthText(*mNetworkStatus.GetTextFont(), handle.c_str(), (int)handle.length()) * 1.1;
-    mNetworkStatus.SetPosition(Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - fontWidth, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin, settings.sRenderer.nHeight - nMargin - 50 + editorOptions.nFontSize));
-
+    std::string* handle = Network::GetHandle();
+    mNetworkStatus.SetText(handle->c_str());
+    networkHandleFontWidth = surface->WidthText(*mNetworkStatus.GetTextFont(), handle->c_str(), (int)handle->length()) * 1.1;
+    mNetworkStatus.SetPosition(Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - networkHandleFontWidth, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin, settings.sRenderer.nHeight - nMargin - 50 + editorOptions.nFontSize));
+   
   }
 
   while ( !Renderer::WantsToQuit() )
   {
     bool newShader = false;
+  
     float time = Timer::GetTime() / 1000.0; // seconds
-
+    Network::SyncTimeWithSender(&time);
     Renderer::StartFrame();
 
     for ( int i = 0; i < Renderer::mouseEventBufferCount; i++ )
@@ -556,7 +558,7 @@ int main( int argc, const char * argv[] )
         mDebugOutput.SetText(szError);
       }
    }
-    Renderer::SetShaderConstant( "fGlobalTime", time );
+    Renderer::SetShaderConstant( "fGlobalTime", time + Network::TimeOffset());
     Renderer::SetShaderConstant( "v2Resolution", settings.sRenderer.nWidth, settings.sRenderer.nHeight );
 
     float fTime = Timer::GetTime();
@@ -648,15 +650,12 @@ int main( int argc, const char * argv[] )
       sHelp += szLayout;
       surface->DrawTextNoClip( Scintilla::PRectangle( 20, Renderer::nHeight - 20, 100, Renderer::nHeight ), *mShaderEditor.GetTextFont(), Renderer::nHeight - 5.0, sHelp.c_str(), (int) sHelp.length(), 0x80FFFFFF, 0x00000000 );
     }
-    if(bShowGui && !Network::IsOffline() && !Network::IsConnected()){ // Activity Square
+    if(bShowGui && !Network::IsOffline() && !Network::IsConnected()){ // Activity Square, might store data to avoid recalculating font widht
       int TexPreviewOffset = bTexPreviewVisible ? nTexPreviewWidth + nMargin : 0;
-      std::string Status = "totetmatt";
-      int fontWidth = surface->WidthText(*mNetworkStatus.GetTextFont(), Status.c_str(), (int)Status.length()) * 1.1;
-      surface->RectangleDraw(Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - fontWidth-10, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin - fontWidth, settings.sRenderer.nHeight - nMargin - 50 + editorOptions.nFontSize), 0x00000000, 0xff8080FF);
+      surface->RectangleDraw(Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - networkHandleFontWidth-10, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin - networkHandleFontWidth, settings.sRenderer.nHeight - nMargin - 50 + editorOptions.nFontSize), 0x00000000, 0xff8080FF);
 
     }
     Renderer::EndTextRendering();
-
     Renderer::EndFrame();
 
     Capture::CaptureFrame();

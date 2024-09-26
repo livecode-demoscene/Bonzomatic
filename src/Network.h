@@ -22,6 +22,7 @@ namespace Network {
     float updateInterval = 0.3f;
     bool sendMidiControls;
     bool grabMidiControls;
+    bool syncTimeWithSender;
   };
   struct ShaderMessage {
     std::string Code;
@@ -57,6 +58,10 @@ namespace Network {
     bool IsSender();
     bool IsOffline();
     bool IsConnected();
+    std::string* GetHandle();
     void GenerateWindowsTitle(char** originalTitle);
+    void SyncTimeWithSender(float* time);
+    float TimeOffset();
+    void ResetTimeOffset(float* time);
 }
 #endif // BONZOMATIC_NETWORK_H

@@ -1,5 +1,7 @@
 #include "Network.h"
 #include "MIDI.h"
+#include <math.h>
+#include <Timer.h>
 #define SHADER_FILENAME(mode) (std::string(mode)+ "_" + RoomName + "_" + NickName + ".glsl")
 #define LOG(header,message) printf("[" header "] " message " \n")
 namespace Network {
@@ -7,6 +9,7 @@ namespace Network {
     Network::NetworkConfig config;
     Network::ShaderMessage shaderMessage;
 
+    float timeOffset=0.f;
     struct mg_mgr mgr;
     struct mg_connection* c;
     bool done = false;
@@ -14,7 +17,7 @@ namespace Network {
     bool IsNewShader = false;
     char szShader[65535];
     bool connected = false;
-
+    std::string handle;
 
   char* GetUrl() {
       return config.Url;
@@ -84,7 +87,7 @@ namespace Network {
     }
     if (Data.has<jsonxx::Number>("ShaderTime")) {
 
-      float t = Data.get<jsonxx::Number>("ShaderTime");
+      shaderMessage.shaderTime = Data.get<jsonxx::Number>("ShaderTime");
       shaderMessage.Code = Data.get < jsonxx::String>("Code");
       shaderMessage.AnchorPosition = Data.get<jsonxx::Number>("Anchor");
       shaderMessage.CaretPosition = Data.get<jsonxx::Number>("Caret");
@@ -255,6 +258,7 @@ namespace Network {
     }
     std::string host, roomname, user, title(*originalTitle), newName;
     Network::SplitUrl(&host, &roomname, &user);
+    handle = user;
     if (IsGrabber()) {
       newName = title + " grabber " + user;
     } 
@@ -263,7 +267,37 @@ namespace Network {
     }
     *originalTitle = strdup(newName.c_str());
   }
+
+  std::string* GetHandle() {
+    return &handle;
+  }
+  void SyncTimeWithSender(float* time) {
+    if (!IsConnected || !IsGrabber() || !config.syncTimeWithSender) return;
+    
+    // 5 - 3 => 2  
+    if (IsNewShader && abs(*time + timeOffset - shaderMessage.shaderTime) > 1.f) {
+      timeOffset = shaderMessage.shaderTime - *time;
+      printf("<diff>%f\n", (timeOffset));
+    }
+
+  }
+  float TimeOffset() {
+    return timeOffset;
+  }
+  void ResetTimeOffset(float *time) {
+    timeOffset = -*time;
+  }
   /* From here are methods for parsing json */
+  void ParseSyncTimeWithSender(jsonxx::Object* network) {
+    if (!network->has<jsonxx::Boolean>("syncTimeWithSender")) {
+      LOG("Network Configuration", "Can't find 'syncTimeWithSender', set to true");
+      config.syncTimeWithSender = true;
+      return;
+    }
+    LOG("Network Configuration", "ParseSyncTimeWithSender");
+    config.syncTimeWithSender = network->get<jsonxx::Boolean>("syncTimeWithSender");
+    printf("%i\n", config.syncTimeWithSender);
+  }
   void ParseNetworkGrabMidiControls(jsonxx::Object * network) {
     if (!network->has<jsonxx::Boolean>("grabMidiControls")) {
       LOG("Network Configuration", "Can't find 'grabMidiControls', set to false");
@@ -315,6 +349,7 @@ namespace Network {
     ParseNetworkGrabMidiControls(network);
     ParseNetworkSendMidiControls(network);
     ParseNetworkUpdateInterval(network);
+    ParseSyncTimeWithSender(network);
   }
   void ParseNetworkUrl(jsonxx::Object* network) {
     if (!network->has<jsonxx::String>("serverURL")) {
@@ -352,6 +387,7 @@ namespace Network {
 
 
   }
+  
   /*
     Parse the json settings. Cascading calls, not perfect but keep clear code
     - Check that Network block exists on json
