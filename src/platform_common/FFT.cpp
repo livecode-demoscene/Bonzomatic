@@ -19,6 +19,7 @@ float sampleBufWin[FFT_SIZE * 2];
 float fAmplification = 1.0f;
 
 bool bPeakNormalization = true;
+bool bPreProcessing = false;
 float fPeakSmoothValue = 0.0f;
 float fPeakMinValue = 0.01f;
 float fPeakSmoothing = 0.995f;
@@ -203,7 +204,8 @@ bool GetFFT( float * _samples )
   }
   kiss_fft_cpx out[ FFT_SIZE + 1 ];
   kiss_fftr( fftcfg, sampleBufWin, out );
-  if (bPeakNormalization) {
+  if (!bPreProcessing && bPeakNormalization) { // Nusan's peakNormalization
+
     float peakValue = fPeakMinValue;
     for (int i = 0; i < FFT_SIZE; i++)
     {
@@ -219,7 +221,8 @@ bool GetFFT( float * _samples )
     }
     fAmplification = 1.0f / fPeakSmoothValue;
   }
-  else {
+  else if(bPreProcessing) // Totetmatt and Cacaooo Pre Processing
+  {
     float fftResolution = 44100.0f / ((float)FFT_SIZE*2.f);
     float sumAmp = 0.f;
     for (int i = 0; i < FFT_SIZE; i++)
@@ -249,6 +252,14 @@ bool GetFFT( float * _samples )
     {
       _samples[i] /= maxAmp;
 
+    }
+  }
+  else  // Original behaviour 
+  { 
+    for (int i = 0; i < FFT_SIZE; i++)
+    {
+      static const float scaling = 1.0f / (float)FFT_SIZE;
+      _samples[i] = 2.0 * sqrtf(out[i].r * out[i].r + out[i].i * out[i].i) * scaling;
     }
   }
 

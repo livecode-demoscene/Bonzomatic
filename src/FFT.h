@@ -16,7 +16,7 @@ extern float fAmplification;
 extern bool bPeakNormalization;
 extern float fPeakMinValue;
 extern float fPeakSmoothing;
-
+extern bool bPreProcessing;
 void EnumerateDevices( FFT_ENUMERATE_FUNC pEnumerationFunction, void * pUserContext );
 
 bool Create();

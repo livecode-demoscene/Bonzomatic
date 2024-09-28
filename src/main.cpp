@@ -208,12 +208,14 @@ int main( int argc, const char * argv[] )
         FFT::fAmplification = options.get<jsonxx::Object>( "rendering" ).get<jsonxx::Number>( "fftAmplification" );
       if (options.get<jsonxx::Object>("rendering").has<jsonxx::Boolean>("fftPeakNormalization"))
         FFT::bPeakNormalization = options.get<jsonxx::Object>("rendering").get<jsonxx::Boolean>("fftPeakNormalization");
+      if (options.get<jsonxx::Object>("rendering").has<jsonxx::Boolean>("fftPreProcessing"))
+        FFT::bPreProcessing = options.get<jsonxx::Object>("rendering").get<jsonxx::Boolean>("fftPreProcessing");
       if (options.get<jsonxx::Object>("rendering").has<jsonxx::Number>("fftPeakMinValue"))
         FFT::fPeakMinValue = options.get<jsonxx::Object>("rendering").get<jsonxx::Number>("fftPeakMinValue");
       if (options.get<jsonxx::Object>("rendering").has<jsonxx::Number>("fftPeakSmoothing"))
         FFT::fPeakSmoothing = options.get<jsonxx::Object>("rendering").get<jsonxx::Number>("fftPeakSmoothing");
     }
-
+    printf("Preprox %i\n", FFT::bPreProcessing);
     if ( options.has<jsonxx::Object>( "textures" ) )
     {
       printf( "Loading textures...\n" );
