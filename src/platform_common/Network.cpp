@@ -290,17 +290,17 @@ namespace Network {
   /* From here are methods for parsing json */
   void ParseSyncTimeWithSender(jsonxx::Object* network) {
     if (!network->has<jsonxx::Boolean>("syncTimeWithSender")) {
-      LOG("Network Configuration", "Can't find 'syncTimeWithSender', set to true");
+      LOG("JSON Network Configuration Parsing", "Can't find 'syncTimeWithSender', set to true");
       config.syncTimeWithSender = true;
       return;
     }
-    LOG("Network Configuration", "ParseSyncTimeWithSender");
+    LOG("JSON Network Configuration Parsing", "ParseSyncTimeWithSender");
     config.syncTimeWithSender = network->get<jsonxx::Boolean>("syncTimeWithSender");
     printf("%i\n", config.syncTimeWithSender);
   }
   void ParseNetworkGrabMidiControls(jsonxx::Object * network) {
     if (!network->has<jsonxx::Boolean>("grabMidiControls")) {
-      LOG("Network Configuration", "Can't find 'grabMidiControls', set to false");
+      LOG("JSON Network Configuration Parsing", "Can't find 'grabMidiControls', set to false");
       config.grabMidiControls = false;
       return;
     }
@@ -308,7 +308,7 @@ namespace Network {
   }
   void ParseNetworkSendMidiControls(jsonxx::Object* network) {
     if (!network->has<jsonxx::Boolean>("sendMidiControls")) {
-      LOG("Network Configuration", "Can't find 'sendMidiControls', set to false");
+      LOG("JSON Network Configuration Parsing", "Can't find 'sendMidiControls', set to false");
       config.sendMidiControls = false;
       return;
     }
@@ -316,7 +316,7 @@ namespace Network {
   }
   void ParseNetworkUpdateInterval(jsonxx::Object* network) {
     if (!network->has<jsonxx::Boolean>("updateInterval")) {
-      LOG("Network Configuration", "Can't find 'updateInterval', set to 0.3");
+      LOG("JSON Network Configuration Parsing", "Can't find 'updateInterval', set to 0.3");
       config.updateInterval = 0.3f;
       return;
     }
@@ -325,7 +325,7 @@ namespace Network {
   }
   void ParseNetworkMode(jsonxx::Object* network) {
     if (!network->has<jsonxx::String>("networkMode")) {
-      LOG("Network Configuration", "Can't find 'networkMode' Set to OFFLINE");
+      LOG("JSON Network Configuration Parsing", "Can't find 'networkMode' Set to OFFLINE");
       config.Mode = OFFLINE;
       return;
     }
@@ -334,7 +334,7 @@ namespace Network {
     bool isSenderMode = strcmp(mode, "sender");
     bool isGrabberMode = strcmp(mode, "grabber");
     if (!isSenderMode && !isGrabberMode) {
-      LOG("Network Configuration", "networkMode is neither SENDER or GRABBER, fallback config to OFFLINE");
+      LOG("JSON Network Configuration Parsing", "networkMode is neither SENDER or GRABBER, fallback config to OFFLINE");
       config.Mode = OFFLINE;
       return;
     }
@@ -353,7 +353,7 @@ namespace Network {
   }
   void ParseNetworkUrl(jsonxx::Object* network) {
     if (!network->has<jsonxx::String>("serverURL")) {
-      LOG("Network Configuration", "Can't find 'serverURL', set to 'OFFLINE'");
+      LOG("JSON Network Configuration Parsing", "Can't find 'serverURL', set to 'OFFLINE'");
       config.Mode = OFFLINE;
       config.Url = "";
       return;
@@ -367,14 +367,14 @@ namespace Network {
   void ParseNetworkEnabled(jsonxx::Object* network) {
  
     if (!network->has<jsonxx::Boolean>("enabled")) {
-      LOG("Network Configuration", "Can't find 'enabled', set to 'OFFLINE'");
+      LOG("JSON Network Configuration Parsing", "Can't find 'enabled', set to 'OFFLINE'");
       config.Mode = OFFLINE;
       config.Url = "";
       return;
     }
 
     if (!network->get<jsonxx::Boolean>("enabled")) {
-      LOG("Network Configuration", "Set to 'OFFLINE'");
+      LOG("JSON Network Configuration Parsing", "Set to 'OFFLINE'");
       config.Mode = OFFLINE;
       config.Url = "";
       // As we can activate this on setup dialog, let's try to get serverURL
@@ -399,9 +399,9 @@ namespace Network {
     */
   void ParseSettings(jsonxx::Object* options) {
     
-    LOG("Network Configuration", "Parsing network configuration data from json");
+    LOG("JSON Network Configuration Parsing", "Parsing network configuration data from json");
     if (!options->has<jsonxx::Object>("network")) {
-      LOG("Network Configuration", "Can't find 'network' block, set to 'OFFLINE'");
+      LOG("JSON Network Configuration Parsing", "Can't find 'network' block, set to 'OFFLINE'");
       config.Mode = OFFLINE;
       config.Url = "";
       return;

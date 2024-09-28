@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <memory.h>
 #include "FFT.h"
-
+# define M_PI           3.14159265358979323846  /* pi */
 namespace FFT
 {
 //////////////////////////////////////////////////////////////////////////
@@ -15,7 +15,14 @@ kiss_fftr_cfg fftcfg;
 ma_context context;
 ma_device captureDevice;
 float sampleBuf[ FFT_SIZE * 2 ];
+float sampleBufWin[FFT_SIZE * 2];
 float fAmplification = 1.0f;
+
+bool bPeakNormalization = true;
+float fPeakSmoothValue = 0.0f;
+float fPeakMinValue = 0.01f;
+float fPeakSmoothing = 0.995f;
+
 bool bCreated = false;
 
 void OnLog( ma_context * pContext, ma_device * pDevice, ma_uint32 logLevel, const char * message )
@@ -24,7 +31,7 @@ void OnLog( ma_context * pContext, ma_device * pDevice, ma_uint32 logLevel, cons
 }
 
 void OnReceiveFrames( ma_device * pDevice, void * pOutput, const void * pInput, ma_uint32 frameCount )
-{
+{  
   frameCount = frameCount < FFT_SIZE * 2 ? frameCount : FFT_SIZE * 2;
 
   // Just rotate the buffer; copy existing, append new
@@ -143,20 +150,106 @@ bool Open( FFT::Settings * pSettings )
 
   return true;
 }
+float aweight(float hz) {
+  if(hz<=10) return - 70.4;
+  if (hz <= 12.5)return -63.4;
+  if (hz <= 16)return -56.7;
+  if (hz <= 20)return -50.5;
+  if (hz <= 25)return -44.7;
+  if (hz <= 31.5)return -39.4;
+  if (hz <= 40)return -34.6;
+  if (hz <= 50)return -30.2;
+  if (hz <= 63)return -26.2;
+  if (hz <= 80)return -22.5;
+  if (hz <= 100)return -19.1;
+  if (hz <= 125)return -16.1;
+  if (hz <= 160)return -13.4;
+  if (hz <= 200)return -10.9;
+  if (hz <= 250)return -8.6;
+  if (hz <= 315)return -6.6;
+  if (hz <= 400) return-4.8;
+  if (hz <= 500)return -3.2;
+  if (hz <= 630)return -1.9;
+  if (hz <= 800)return -0.8;
+  if (hz <= 1000)return	0;
+  if (hz <= 1250)return	0.6;
+  if (hz <= 1600)return	1;
+  if (hz <= 2000)return	1.2;
+  if (hz <= 2500)return	1.3;
+  if (hz <= 3150)return	1.2;
+  if (hz <= 4000)return	1;
+  if (hz <= 5000)	return 0.5;
+  if (hz <= 6300)return	0.1;
+  if (hz <= 8000)return -1.1;
+  if (hz <= 10000)return -2.5;
+  if (hz <= 12500)return -4.3;
+  if (hz <= 16000)return -6.6;
+  if (hz <= 20000)return -9.3;
+    return 9.3;
+}
 bool GetFFT( float * _samples )
 {
+  memset(sampleBufWin, 0, sizeof(float) * FFT_SIZE * 2);
   if ( !bCreated )
   {
     return false;
   }
+  
+  for (size_t i = 0; i < FFT_SIZE*2; i++) {
+    float t = (float)i / (FFT_SIZE*2 - 1);
+    float hann = 0.5 - 0.5 * cosf(2 * M_PI * t);
+    sampleBufWin[i] = sampleBuf[i] *20.f * hann;// powf(sinf(M_PI * i / FFT_SIZE), 2.f);
 
+  }
   kiss_fft_cpx out[ FFT_SIZE + 1 ];
-  kiss_fftr( fftcfg, sampleBuf, out );
+  kiss_fftr( fftcfg, sampleBufWin, out );
+  if (bPeakNormalization) {
+    float peakValue = fPeakMinValue;
+    for (int i = 0; i < FFT_SIZE; i++)
+    {
+      float val = 2.0f * sqrtf(out[i].r * out[i].r + out[i].i * out[i].i);
+      if (val > peakValue) peakValue = val;
+      _samples[i] = val * fAmplification;
+    }
+    if (peakValue > fPeakSmoothValue) {
+      fPeakSmoothValue = peakValue;
+    }
+    if (peakValue < fPeakSmoothValue) {
+      fPeakSmoothValue = fPeakSmoothValue * fPeakSmoothing + peakValue * (1 - fPeakSmoothing);
+    }
+    fAmplification = 1.0f / fPeakSmoothValue;
+  }
+  else {
+    float fftResolution = 44100.0f / ((float)FFT_SIZE*2.f);
+    float sumAmp = 0.f;
+    for (int i = 0; i < FFT_SIZE; i++)
+    {
+      sumAmp += _samples[i];
 
-  for ( int i = 0; i < FFT_SIZE; i++ )
-  {
-    static const float scaling = 1.0f / (float) FFT_SIZE;
-    _samples[ i ] = 2.0 * sqrtf( out[ i ].r * out[ i ].r + out[ i ].i * out[ i ].i ) * scaling;
+    }
+    float maxAmp = 0.1f;
+    for (int i = 0; i < FFT_SIZE; i++)
+    {
+      static const float scaling = 1.0f / (float)FFT_SIZE;
+      
+      float amp = 2.0 * sqrtf(out[i].r * out[i].r + out[i].i * out[i].i);
+
+      if (amp > 0.f) {
+         amp = 20.0f*logf(amp);
+        float currentFreq = fftResolution * (float)i;
+        amp += aweight(currentFreq);
+      
+      }
+      //printf("[%zu] - %f\n",i, amp);
+      _samples[i] = (amp < 0.0f ? 0.0f:amp) * scaling;
+      maxAmp = _samples[i] > maxAmp ? _samples[i] : maxAmp;
+
+    }
+    for (int i = 0; i < FFT_SIZE; i++)
+    {
+      _samples[i] /= maxAmp;
+
+    }
   }
 
   return true;

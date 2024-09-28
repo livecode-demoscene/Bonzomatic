@@ -137,6 +137,9 @@ int main( int argc, const char * argv[] )
       settings.sRenderer.nHeight = options.get<jsonxx::Object>( "window" ).get<jsonxx::Number>( "height" );
     if ( options.get<jsonxx::Object>( "window" ).has<jsonxx::Boolean>( "fullscreen" ) )
       settings.sRenderer.windowMode = options.get<jsonxx::Object>( "window" ).get<jsonxx::Boolean>( "fullscreen" ) ? Renderer::WINDOWMODE_FULLSCREEN : Renderer::WINDOWMODE_WINDOWED;
+    if (options.get<jsonxx::Object>("window").has<jsonxx::Boolean>( "borderless" ))
+      settings.sRenderer.borderless = options.get<jsonxx::Object>( "window" ).get<jsonxx::Boolean>( "borderless" );
+
   }
   if ( !skipSetupDialog )
   {
@@ -203,6 +206,12 @@ int main( int argc, const char * argv[] )
         fFFTSmoothingFactor = options.get<jsonxx::Object>( "rendering" ).get<jsonxx::Number>( "fftSmoothFactor" );
       if ( options.get<jsonxx::Object>( "rendering" ).has<jsonxx::Number>( "fftAmplification" ) )
         FFT::fAmplification = options.get<jsonxx::Object>( "rendering" ).get<jsonxx::Number>( "fftAmplification" );
+      if (options.get<jsonxx::Object>("rendering").has<jsonxx::Boolean>("fftPeakNormalization"))
+        FFT::bPeakNormalization = options.get<jsonxx::Object>("rendering").get<jsonxx::Boolean>("fftPeakNormalization");
+      if (options.get<jsonxx::Object>("rendering").has<jsonxx::Number>("fftPeakMinValue"))
+        FFT::fPeakMinValue = options.get<jsonxx::Object>("rendering").get<jsonxx::Number>("fftPeakMinValue");
+      if (options.get<jsonxx::Object>("rendering").has<jsonxx::Number>("fftPeakSmoothing"))
+        FFT::fPeakSmoothing = options.get<jsonxx::Object>("rendering").get<jsonxx::Number>("fftPeakSmoothing");
     }
 
     if ( options.has<jsonxx::Object>( "textures" ) )

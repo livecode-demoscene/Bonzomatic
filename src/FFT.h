@@ -13,6 +13,9 @@ struct Settings
 typedef void ( *FFT_ENUMERATE_FUNC )( const bool bIsCaptureDevice, const char * szDeviceName, void * pDeviceID, void * pUserContext );
 
 extern float fAmplification;
+extern bool bPeakNormalization;
+extern float fPeakMinValue;
+extern float fPeakSmoothing;
 
 void EnumerateDevices( FFT_ENUMERATE_FUNC pEnumerationFunction, void * pUserContext );
 

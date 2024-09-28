@@ -17,6 +17,7 @@ struct Settings
   int nHeight;
   WINDOWMODE windowMode;
   bool bVsync;
+  bool borderless = false;
 };
 
 struct KeyEvent
