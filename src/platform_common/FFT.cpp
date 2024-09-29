@@ -186,7 +186,7 @@ float aweight(float hz) {
   if (hz <= 12500)return -4.3;
   if (hz <= 16000)return -6.6;
   if (hz <= 20000)return -9.3;
-    return 9.3;
+    return -9.3;
 }
 bool GetFFT( float * _samples )
 {
