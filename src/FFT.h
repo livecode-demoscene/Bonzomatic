@@ -1,5 +1,5 @@
-#define FFT_SIZE 1024
-
+#define FFT_BIN_SIZE 1024
+#define FFT_INPUT_LENGTH (FFT_BIN_SIZE*2)
 namespace FFT
 {
 //////////////////////////////////////////////////////////////////////////

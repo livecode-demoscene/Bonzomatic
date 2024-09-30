@@ -14,8 +14,8 @@ namespace FFT
 kiss_fftr_cfg fftcfg;
 ma_context context;
 ma_device captureDevice;
-float sampleBuf[ FFT_SIZE * 2 ];
-float sampleBufWin[FFT_SIZE * 2];
+float sampleBuf[FFT_INPUT_LENGTH ];
+float sampleBufWin[FFT_INPUT_LENGTH];
 float fAmplification = 1.0f;
 
 bool bPeakNormalization = true;
@@ -33,12 +33,12 @@ void OnLog( ma_context * pContext, ma_device * pDevice, ma_uint32 logLevel, cons
 
 void OnReceiveFrames( ma_device * pDevice, void * pOutput, const void * pInput, ma_uint32 frameCount )
 {  
-  frameCount = frameCount < FFT_SIZE * 2 ? frameCount : FFT_SIZE * 2;
+  frameCount = frameCount < FFT_INPUT_LENGTH ? frameCount : FFT_INPUT_LENGTH;
 
   // Just rotate the buffer; copy existing, append new
   const float * samples = (const float *) pInput;
   float * p = sampleBuf;
-  for ( int i = 0; i < FFT_SIZE * 2 - frameCount; i++ )
+  for ( int i = 0; i < FFT_INPUT_LENGTH - frameCount; i++ )
   {
     *( p++ ) = sampleBuf[ i + frameCount ];
   }
@@ -119,9 +119,9 @@ bool Open( FFT::Settings * pSettings )
     return false;
   }
 
-  memset( sampleBuf, 0, sizeof( float ) * FFT_SIZE * 2 );
+  memset( sampleBuf, 0, sizeof( float ) * FFT_INPUT_LENGTH);
 
-  fftcfg = kiss_fftr_alloc( FFT_SIZE * 2, false, NULL, NULL );
+  fftcfg = kiss_fftr_alloc(FFT_INPUT_LENGTH, false, NULL, NULL );
 
   bool useLoopback = ma_is_loopback_supported( context.backend ) && !pSettings->bUseRecordingDevice;
   ma_device_config config = ma_device_config_init( useLoopback ? ma_device_type_loopback : ma_device_type_capture );
@@ -190,24 +190,24 @@ float aweight(float hz) {
 }
 bool GetFFT( float * _samples )
 {
-  memset(sampleBufWin, 0, sizeof(float) * FFT_SIZE * 2);
+  memset(sampleBufWin, 0, sizeof(float) * FFT_INPUT_LENGTH);
   if ( !bCreated )
   {
     return false;
   }
   
-  for (size_t i = 0; i < FFT_SIZE*2; i++) {
-    float t = (float)i / (FFT_SIZE*2 - 1);
+  for (size_t i = 0; i < FFT_INPUT_LENGTH; i++) {
+    float t = (float)i / (FFT_INPUT_LENGTH - 1);
     float hann = 0.5 - 0.5 * cosf(2 * M_PI * t);
     sampleBufWin[i] = sampleBuf[i] *20.f * hann;// powf(sinf(M_PI * i / FFT_SIZE), 2.f);
 
   }
-  kiss_fft_cpx out[ FFT_SIZE + 1 ];
+  kiss_fft_cpx out[ FFT_BIN_SIZE + 1 ];
   kiss_fftr( fftcfg, sampleBufWin, out );
   if (!bPreProcessing && bPeakNormalization) { // Nusan's peakNormalization
 
     float peakValue = fPeakMinValue;
-    for (int i = 0; i < FFT_SIZE; i++)
+    for (int i = 0; i < FFT_BIN_SIZE; i++)
     {
       float val = 2.0f * sqrtf(out[i].r * out[i].r + out[i].i * out[i].i);
       if (val > peakValue) peakValue = val;
@@ -223,17 +223,17 @@ bool GetFFT( float * _samples )
   }
   else if(bPreProcessing) // Totetmatt and Cacaooo Pre Processing
   {
-    float fftResolution = 44100.0f / ((float)FFT_SIZE*2.f);
+    float fftResolution = 44100.0f / ((float)FFT_INPUT_LENGTH);
     float sumAmp = 0.f;
-    for (int i = 0; i < FFT_SIZE; i++)
+    for (int i = 0; i < FFT_BIN_SIZE; i++)
     {
       sumAmp += _samples[i];
 
     }
     float maxAmp = 0.1f;
-    for (int i = 0; i < FFT_SIZE; i++)
+    for (int i = 0; i < FFT_BIN_SIZE; i++)
     {
-      static const float scaling = 1.0f / (float)FFT_SIZE;
+      static const float scaling = 1.0f / (float)FFT_BIN_SIZE;
       
       float amp = 2.0 * sqrtf(out[i].r * out[i].r + out[i].i * out[i].i);
 
@@ -248,7 +248,7 @@ bool GetFFT( float * _samples )
       maxAmp = _samples[i] > maxAmp ? _samples[i] : maxAmp;
 
     }
-    for (int i = 0; i < FFT_SIZE; i++)
+    for (int i = 0; i < FFT_BIN_SIZE; i++)
     {
       _samples[i] /= maxAmp;
 
@@ -256,9 +256,9 @@ bool GetFFT( float * _samples )
   }
   else  // Original behaviour 
   { 
-    for (int i = 0; i < FFT_SIZE; i++)
+    for (int i = 0; i < FFT_BIN_SIZE; i++)
     {
-      static const float scaling = 1.0f / (float)FFT_SIZE;
+      static const float scaling = 1.0f / (float)FFT_BIN_SIZE;
       _samples[i] = 2.0 * sqrtf(out[i].r * out[i].r + out[i].i * out[i].i) * scaling;
     }
   }

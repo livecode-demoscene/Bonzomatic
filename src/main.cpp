@@ -335,9 +335,9 @@ int main( int argc, const char * argv[] )
   }
 
   Renderer::Texture * texPreviousFrame = Renderer::CreateRGBA8Texture();
-  Renderer::Texture * texFFT = Renderer::Create1DR32Texture( FFT_SIZE );
-  Renderer::Texture * texFFTSmoothed = Renderer::Create1DR32Texture( FFT_SIZE );
-  Renderer::Texture * texFFTIntegrated = Renderer::Create1DR32Texture( FFT_SIZE );
+  Renderer::Texture * texFFT = Renderer::Create1DR32Texture(FFT_BIN_SIZE);
+  Renderer::Texture * texFFTSmoothed = Renderer::Create1DR32Texture(FFT_BIN_SIZE);
+  Renderer::Texture * texFFTIntegrated = Renderer::Create1DR32Texture(FFT_BIN_SIZE);
 
   // Overriding Name if we are in SENDER or GRABBER Network mode
   Network::UpdateShaderFileName(&Renderer::szDefaultShaderFilename);
@@ -410,15 +410,15 @@ int main( int argc, const char * argv[] )
   mDebugOutput.SetReadOnly( true );
 
  
-  static float fftData[ FFT_SIZE ];
-  memset( fftData, 0, sizeof( float ) * FFT_SIZE );
-  static float fftDataSmoothed[ FFT_SIZE ];
-  memset( fftDataSmoothed, 0, sizeof( float ) * FFT_SIZE );
+  static float fftData[FFT_BIN_SIZE];
+  memset( fftData, 0, sizeof( float ) * FFT_BIN_SIZE);
+  static float fftDataSmoothed[FFT_BIN_SIZE];
+  memset( fftDataSmoothed, 0, sizeof( float ) * FFT_BIN_SIZE);
 
-  static float fftDataSlightlySmoothed[ FFT_SIZE ];
-  memset( fftDataSlightlySmoothed, 0, sizeof( float ) * FFT_SIZE );
-  static float fftDataIntegrated[ FFT_SIZE ];
-  memset( fftDataIntegrated, 0, sizeof( float ) * FFT_SIZE );
+  static float fftDataSlightlySmoothed[FFT_BIN_SIZE];
+  memset( fftDataSlightlySmoothed, 0, sizeof( float ) * FFT_BIN_SIZE);
+  static float fftDataIntegrated[FFT_BIN_SIZE];
+  memset( fftDataIntegrated, 0, sizeof( float ) * FFT_BIN_SIZE);
 
   bool bShowGui = true;
   Timer::Start();
@@ -587,7 +587,7 @@ int main( int argc, const char * argv[] )
       Renderer::UpdateR32Texture( texFFT, fftData );
 
       const static float maxIntegralValue = 1024.0f;
-      for ( int i = 0; i < FFT_SIZE; i++ )
+      for ( int i = 0; i < FFT_BIN_SIZE; i++ )
       {
         fftDataSmoothed[ i ] = fftDataSmoothed[ i ] * fFFTSmoothingFactor + ( 1 - fFFTSmoothingFactor ) * fftData[ i ];
 
