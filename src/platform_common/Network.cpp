@@ -19,6 +19,7 @@ namespace Network {
     bool connected = false;
     std::string handle;
 
+    float pingTime = 0.f;
   char* GetUrl() {
       return config.Url;
   }
@@ -98,6 +99,8 @@ namespace Network {
 
   }
   static void fn(struct mg_connection* c, int ev, void* ev_data) {
+
+    //printf("ev: %i\n", ev);
     if (ev == MG_EV_OPEN) {
       c->is_hexdumping = 0;
     }
@@ -105,27 +108,40 @@ namespace Network {
       // On error, log error message
       MG_ERROR(("%p %s", c->fd, (char*)ev_data));
     }
+   
     else if (ev == MG_EV_WS_OPEN) {
       fprintf(stdout, "[Network]: Connected\n");
       connected = true;
       // When websocket handshake is successful, send message
       // mg_ws_send(c, "hello", 5, WEBSOCKET_OP_TEXT);
     }
+    else if (config.Mode == SENDER && ev == MG_EV_WS_MSG) {
+
+      struct mg_ws_message* wm = (struct mg_ws_message*)ev_data;
+
+      if (wm->data.len == 0) { // Message 0 len = PING from Grabber
+        pingTime = shaderMessage.shaderTime;
+      }
+
+    }
     else if (ev == MG_EV_WS_MSG && config.Mode == GRABBER) {
       // When we get echo response, print it
 
       struct mg_ws_message* wm = (struct mg_ws_message*)ev_data;
-
-      RecieveShader((int)wm->data.len, wm->data.buf);
-
+     
+      if(wm->data.len>0) {
+       RecieveShader((int)wm->data.len, wm->data.buf);
+      }
       // printf("GOT ECHO REPLY: [%.*s]\n", (int)wm->data.len, wm->data.buf);
-    }
+    } 
     else if (ev == MG_EV_ERROR || ev == MG_EV_CLOSE ) {
       connected = false;
       printf("Error\n");
     }
   }
-
+  bool IsPinged() {
+    return abs(pingTime - shaderMessage.shaderTime) < 1.f;
+  }
   void Create() {
     fprintf(stdout, "[Network]: Try to connect to %s\n", config.Url);
     mg_mgr_init(&mgr);
@@ -197,7 +213,7 @@ namespace Network {
         //mShaderEditor.WndProc(SCI_SETFIRSTVISIBLELINE, NewMessage.FirstVisibleLine, 0);
         mShaderEditor->WndProc(SCI_SCROLLCARET, 0, 0);
         //}
-
+        mg_ws_send(c, 0, 0, WEBSOCKET_OP_BINARY); // Send Ping to Sender to notify received
 
       }
       else if (config.Mode == Network::SENDER && shaderTime - shaderMessage.shaderTime > 0.1) {

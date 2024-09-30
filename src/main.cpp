@@ -658,14 +658,22 @@ int main( int argc, const char * argv[] )
       char szLayout[ 255 ];
       Misc::GetKeymapName( szLayout );
       std::string sHelp = "F2 - toggle texture preview   F5 or Ctrl-R - recompile shader   F11 - hide GUI   Current keymap: ";
+     
       sHelp += szLayout;
       surface->DrawTextNoClip( Scintilla::PRectangle( 20, Renderer::nHeight - 20, 100, Renderer::nHeight ), *mShaderEditor.GetTextFont(), Renderer::nHeight - 5.0, sHelp.c_str(), (int) sHelp.length(), 0x80FFFFFF, 0x00000000 );
+    
     }
     if(bShowGui && !Network::IsOffline() && !Network::IsConnected()){ // Activity Square, might store data to avoid recalculating font widht
       int TexPreviewOffset = bTexPreviewVisible ? nTexPreviewWidth + nMargin : 0;
       surface->RectangleDraw(Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - networkHandleFontWidth-10, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin - networkHandleFontWidth, settings.sRenderer.nHeight - nMargin - 50 + editorOptions.nFontSize), 0x00000000, 0xff8080FF);
 
     }
+    if (Network::IsSender()) {
+      if (!Network::IsPinged()) {
+        surface->RectangleDraw(Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - networkHandleFontWidth - 21, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin - networkHandleFontWidth - 11, settings.sRenderer.nHeight - nMargin - 50 + editorOptions.nFontSize), 0x00000000, 0xffFF8080);
+      }
+    }
+   
     Renderer::EndTextRendering();
     Renderer::EndFrame();
 

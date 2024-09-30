@@ -63,5 +63,6 @@ namespace Network {
     void SyncTimeWithSender(float* time);
     float TimeOffset();
     void ResetTimeOffset(float* time);
+    bool IsPinged();
 }
 #endif // BONZOMATIC_NETWORK_H
