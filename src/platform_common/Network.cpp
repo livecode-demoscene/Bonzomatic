@@ -20,6 +20,7 @@ namespace Network {
     std::string handle;
 
     float pingTime = 0.f;
+    bool isFirstShaderCompile = true;
   char* GetUrl() {
       return config.Url;
   }
@@ -49,6 +50,7 @@ namespace Network {
   bool HasNewShader() {
     if (IsNewShader) {
       IsNewShader = false;
+
       return true;
     }
     return false;
@@ -92,8 +94,9 @@ namespace Network {
       shaderMessage.Code = Data.get < jsonxx::String>("Code");
       shaderMessage.AnchorPosition = Data.get<jsonxx::Number>("Anchor");
       shaderMessage.CaretPosition = Data.get<jsonxx::Number>("Caret");
-      shaderMessage.NeedRecompile = Data.get<jsonxx::Boolean>("Compile");
+      shaderMessage.NeedRecompile = Data.get<jsonxx::Boolean>("Compile") || isFirstShaderCompile;
       IsNewShader = true;
+      isFirstShaderCompile = false;
 
     }
 
