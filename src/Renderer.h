@@ -84,6 +84,7 @@ extern const char * shaderBuiltin;
 
 extern int nWidth;
 extern int nHeight;
+extern bool sizeChanged;
 
 bool OpenSetupDialog( Settings * settings );
 bool Open( Settings * settings );

@@ -398,12 +398,12 @@ int main( int argc, const char * argv[] )
 
   bool bTexPreviewVisible = false;
 
-  editorOptions.rect = Scintilla::PRectangle( nMargin, nMargin, settings.sRenderer.nWidth - nMargin - nTexPreviewWidth - nMargin, settings.sRenderer.nHeight - nMargin * 2 - nDebugOutputHeight );
+  editorOptions.rect = Scintilla::PRectangle( nMargin, nMargin, Renderer::nWidth - nMargin - nTexPreviewWidth - nMargin, Renderer::nHeight - nMargin * 2 - nDebugOutputHeight );
   ShaderEditor mShaderEditor( surface );
   mShaderEditor.Initialise( editorOptions );
   mShaderEditor.SetText( szShader );
 
-  editorOptions.rect = Scintilla::PRectangle( nMargin, settings.sRenderer.nHeight - nMargin - nDebugOutputHeight, settings.sRenderer.nWidth - nMargin - nTexPreviewWidth - nMargin, settings.sRenderer.nHeight - nMargin );
+  editorOptions.rect = Scintilla::PRectangle( nMargin, Renderer::nHeight - nMargin - nDebugOutputHeight, Renderer::nWidth - nMargin - nTexPreviewWidth - nMargin, Renderer::nHeight - nMargin );
   ShaderEditor mDebugOutput( surface );
   mDebugOutput.Initialise( editorOptions );
   mDebugOutput.SetText( "" );
@@ -430,7 +430,7 @@ int main( int argc, const char * argv[] )
   int networkHandleFontWidth;
   if (!Network::IsOffline()) {
     // Network Handle  
-    editorOptions.rect = Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - 100, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin, settings.sRenderer.nHeight - nMargin);
+    editorOptions.rect = Scintilla::PRectangle(Renderer::nWidth - nMargin - 100, Renderer::nHeight - nMargin - 50, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin);
     editorOptions.nFontSize *= 2.5;
     mNetworkStatus.Initialise(editorOptions);
     mNetworkStatus.SetReadOnly(true);
@@ -438,7 +438,7 @@ int main( int argc, const char * argv[] )
     std::string* handle = Network::GetHandle();
     mNetworkStatus.SetText(handle->c_str());
     networkHandleFontWidth = surface->WidthText(*mNetworkStatus.GetTextFont(), handle->c_str(), (int)handle->length()) * 1.1;
-    mNetworkStatus.SetPosition(Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - networkHandleFontWidth, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin, settings.sRenderer.nHeight - nMargin - 50 + editorOptions.nFontSize));
+    mNetworkStatus.SetPosition(Scintilla::PRectangle(Renderer::nWidth - nMargin - networkHandleFontWidth, Renderer::nHeight - nMargin - 50, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin - 50 + editorOptions.nFontSize));
    
   }
 
@@ -489,14 +489,14 @@ int main( int argc, const char * argv[] )
       {
         if ( bTexPreviewVisible )
         {
-          mShaderEditor.SetPosition( Scintilla::PRectangle( nMargin, nMargin, settings.sRenderer.nWidth - nMargin, settings.sRenderer.nHeight - nMargin * 2 - nDebugOutputHeight ) );
-          mDebugOutput.SetPosition( Scintilla::PRectangle( nMargin, settings.sRenderer.nHeight - nMargin - nDebugOutputHeight, settings.sRenderer.nWidth - nMargin, settings.sRenderer.nHeight - nMargin ) );
+          mShaderEditor.SetPosition( Scintilla::PRectangle( nMargin, nMargin, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin * 2 - nDebugOutputHeight ) );
+          mDebugOutput.SetPosition( Scintilla::PRectangle( nMargin, Renderer::nHeight - nMargin - nDebugOutputHeight, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin ) );
           bTexPreviewVisible = false;
         }
         else
         {
-          mShaderEditor.SetPosition( Scintilla::PRectangle( nMargin, nMargin, settings.sRenderer.nWidth - nMargin - nTexPreviewWidth - nMargin, settings.sRenderer.nHeight - nMargin * 2 - nDebugOutputHeight ) );
-          mDebugOutput.SetPosition( Scintilla::PRectangle( nMargin, settings.sRenderer.nHeight - nMargin - nDebugOutputHeight, settings.sRenderer.nWidth - nMargin - nTexPreviewWidth - nMargin, settings.sRenderer.nHeight - nMargin ) );
+          mShaderEditor.SetPosition( Scintilla::PRectangle( nMargin, nMargin, Renderer::nWidth - nMargin - nTexPreviewWidth - nMargin, Renderer::nHeight - nMargin * 2 - nDebugOutputHeight ) );
+          mDebugOutput.SetPosition( Scintilla::PRectangle( nMargin, Renderer::nHeight - nMargin - nDebugOutputHeight, Renderer::nWidth - nMargin - nTexPreviewWidth - nMargin, Renderer::nHeight - nMargin ) );
           bTexPreviewVisible = true;
         }
         
@@ -570,7 +570,7 @@ int main( int argc, const char * argv[] )
       }
    }
     Renderer::SetShaderConstant( "fGlobalTime", time + Network::TimeOffset());
-    Renderer::SetShaderConstant( "v2Resolution", settings.sRenderer.nWidth, settings.sRenderer.nHeight );
+    Renderer::SetShaderConstant( "v2Resolution", Renderer::nWidth, Renderer::nHeight);
 
     float fTime = Timer::GetTime();
     Renderer::SetShaderConstant( "fFrameTime", ( fTime - fLastTimeMS ) / 1000.0f );
@@ -615,6 +615,7 @@ int main( int argc, const char * argv[] )
 
     Renderer::RenderFullscreenQuad();
 
+
     Renderer::CopyBackbufferToTexture( texPreviousFrame );
 
     Renderer::StartTextRendering();
@@ -638,8 +639,8 @@ int main( int argc, const char * argv[] )
       if ( bTexPreviewVisible )
       {
         int y1 = nMargin;
-        int x1 = settings.sRenderer.nWidth - nMargin - nTexPreviewWidth;
-        int x2 = settings.sRenderer.nWidth - nMargin;
+        int x1 = Renderer::nWidth - nMargin - nTexPreviewWidth;
+        int x2 = Renderer::nWidth - nMargin;
         for ( std::map<std::string, Renderer::Texture *>::iterator it = textures.begin(); it != textures.end(); it++ )
         {
           int y2 = y1 + nTexPreviewWidth * ( it->second->height / (float) it->second->width );
@@ -665,15 +666,20 @@ int main( int argc, const char * argv[] )
     }
     if(bShowGui && !Network::IsOffline() && !Network::IsConnected()){ // Activity Square, might store data to avoid recalculating font widht
       int TexPreviewOffset = bTexPreviewVisible ? nTexPreviewWidth + nMargin : 0;
-      surface->RectangleDraw(Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - networkHandleFontWidth-10, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin - networkHandleFontWidth, settings.sRenderer.nHeight - nMargin - 50 + editorOptions.nFontSize), 0x00000000, 0xff8080FF);
+      surface->RectangleDraw(Scintilla::PRectangle(Renderer::nWidth - nMargin - networkHandleFontWidth-10, Renderer::nHeight - nMargin - 50, Renderer::nWidth - nMargin - networkHandleFontWidth, Renderer::nHeight - nMargin - 50 + editorOptions.nFontSize), 0x00000000, 0xff8080FF);
 
     }
-    if (Network::IsSender()) {
+    if (bShowGui && Network::IsSender()) {
       if (!Network::IsPinged()) {
-        surface->RectangleDraw(Scintilla::PRectangle(settings.sRenderer.nWidth - nMargin - networkHandleFontWidth - 21, settings.sRenderer.nHeight - nMargin - 50, settings.sRenderer.nWidth - nMargin - networkHandleFontWidth - 11, settings.sRenderer.nHeight - nMargin - 50 + editorOptions.nFontSize), 0x00000000, 0xffFF8080);
+        surface->RectangleDraw(Scintilla::PRectangle(Renderer::nWidth - nMargin - networkHandleFontWidth - 21, Renderer::nHeight - nMargin - 50, Renderer::nWidth - nMargin - networkHandleFontWidth - 11, Renderer::nHeight - nMargin - 50 + editorOptions.nFontSize), 0x00000000, 0xffFF8080);
       }
     }
-   
+    if (Renderer::sizeChanged) {
+      mShaderEditor.SetPosition(Scintilla::PRectangle(nMargin, nMargin, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin * 2 - nDebugOutputHeight));
+      mDebugOutput.SetPosition(Scintilla::PRectangle(nMargin, Renderer::nHeight - nMargin - nDebugOutputHeight, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin));
+      mNetworkStatus.SetPosition(Scintilla::PRectangle(Renderer::nWidth - nMargin - networkHandleFontWidth, Renderer::nHeight - nMargin - 50, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin - 50 + editorOptions.nFontSize));
+      Renderer::sizeChanged = false;
+    }
     Renderer::EndTextRendering();
     Renderer::EndFrame();
 
