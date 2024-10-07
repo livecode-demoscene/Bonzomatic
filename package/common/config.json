@@ -1,10 +1,18 @@
 {
   "font":{
     "file":"ProFontWindows.ttf",
-    "size":18,
+    "size":18
+  },  
+  "window":{
+    "width":1280,
+    "height":720,
+    "fullscreen":false,
+    "borderless":false
   },
   "rendering":{
     "fftSmoothFactor": 0.9,
+    "fftPreProcessing": true,
+    "fftPeakNormalization": false
   },
   "textures":{
     "texChecker":"textures/checker.png",
@@ -12,11 +20,27 @@
     "texTex1":"textures/tex1.jpg",
     "texTex2":"textures/tex2.jpg",
     "texTex3":"textures/tex3.jpg",
-    "texTex4":"textures/tex4.jpg",
+    "texTex4":"textures/tex4.jpg"
   },
   "gui":{
     "outputHeight": 100,
     "opacity": 192,
-    "texturePreviewWidth": 100,
+    "texturePreviewWidth": 100
+  },
+  "network": {
+    "enabled": true,
+    "serverURL": "ws://drone.alkama.com:9000/roomname/handle",
+    "networkMode": "grabber", 
+    "updateInterval": 0.5, 
+    "syncTimeWithSender": true, 
+    "sendMidiControls": false, 
+    "grabMidiControls": false 
+  },
+  "ndi":{
+    "enabled": false,
+    "connectionString": "<ndi_product something=\"123\"/>", 
+    "identifier": "hello!", 
+    "frameRate": 60.0, 
+    "progressive": true
   }
 }
