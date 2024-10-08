@@ -215,7 +215,7 @@ int main( int argc, const char * argv[] )
       if (options.get<jsonxx::Object>("rendering").has<jsonxx::Number>("fftPeakSmoothing"))
         FFT::fPeakSmoothing = options.get<jsonxx::Object>("rendering").get<jsonxx::Number>("fftPeakSmoothing");
     }
-    printf("Preprox %i\n", FFT::bPreProcessing);
+
     if ( options.has<jsonxx::Object>( "textures" ) )
     {
       printf( "Loading textures...\n" );
@@ -444,8 +444,10 @@ int main( int argc, const char * argv[] )
 
   while ( !Renderer::WantsToQuit() )
   {
+
+    Network::ChecktNetwork();
     bool newShader = false;
-  
+    
     float time = Timer::GetTime() / 1000.0; // seconds
     Network::SyncTimeWithSender(&time);
     Renderer::StartFrame();

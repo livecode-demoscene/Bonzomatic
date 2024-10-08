@@ -3,7 +3,6 @@
 #include <math.h>
 #include <Timer.h>
 #define SHADER_FILENAME(mode) (std::string(mode)+ "_" + RoomName + "_" + NickName + ".glsl")
-#define LOG(header,message) printf("[" header "] " message " \n")
 namespace Network {
 
     Network::NetworkConfig config;
@@ -13,7 +12,7 @@ namespace Network {
     struct mg_mgr mgr;
     struct mg_connection* c;
     bool done = false;
-    std::thread* tNetwork;
+    std::thread* tNetwork = NULL;
     bool IsNewShader = false;
     char szShader[65535];
     bool connected = false;
@@ -33,24 +32,9 @@ namespace Network {
   void SetNetworkMode(NetworkMode mode) {
     config.Mode = mode;
   }
-  void PrintConfig() {
-    std::cout << "******************* Network Config ********************" << std::endl;
-    std::cout << config.Url << std::endl;
-    if (config.Mode == NetworkMode::OFFLINE) {
-      std::cout << "OFFLINE" << std::endl;
-    }
-    else if (config.Mode == NetworkMode::SENDER) {
-      std::cout << "SENDER" << std::endl;
-    }
-    else if (config.Mode == NetworkMode::GRABBER) {
-      std::cout << "GRABBER" << std::endl;
-    }
-
-  }
   bool HasNewShader() {
     if (IsNewShader) {
       IsNewShader = false;
-
       return true;
     }
     return false;
@@ -103,20 +87,18 @@ namespace Network {
   }
   static void fn(struct mg_connection* c, int ev, void* ev_data) {
 
-    //printf("ev: %i\n", ev);
     if (ev == MG_EV_OPEN) {
       c->is_hexdumping = 0;
+      connected = true;
     }
     else if (ev == MG_EV_ERROR) {
       // On error, log error message
       MG_ERROR(("%p %s", c->fd, (char*)ev_data));
+      connected = false;
     }
-   
     else if (ev == MG_EV_WS_OPEN) {
       fprintf(stdout, "[Network]: Connected\n");
       connected = true;
-      // When websocket handshake is successful, send message
-      // mg_ws_send(c, "hello", 5, WEBSOCKET_OP_TEXT);
     }
     else if (config.Mode == SENDER && ev == MG_EV_WS_MSG) {
 
@@ -128,14 +110,12 @@ namespace Network {
 
     }
     else if (ev == MG_EV_WS_MSG && config.Mode == GRABBER) {
-      // When we get echo response, print it
 
       struct mg_ws_message* wm = (struct mg_ws_message*)ev_data;
      
       if(wm->data.len>0) {
        RecieveShader((int)wm->data.len, wm->data.buf);
       }
-      // printf("GOT ECHO REPLY: [%.*s]\n", (int)wm->data.len, wm->data.buf);
     } 
     else if (ev == MG_EV_ERROR || ev == MG_EV_CLOSE ) {
       connected = false;
@@ -159,11 +139,19 @@ namespace Network {
     mg_mgr_free(&mgr);
   }
 
+  void ChecktNetwork() {
+    if (!IsConnected() && !IsOffline()) {
+        connected = true;
+        fprintf(stdout, "[Network]: Starting Thread\n");
+        std::thread network(Create);
+        tNetwork = &network;
+        tNetwork->detach();
+  
+    }
+  }
   void Init() {
     if(config.Mode != OFFLINE){
-      std::thread network(Create);
-      tNetwork = &network;
-      tNetwork->detach();
+        ChecktNetwork();
     }
     else {
       fprintf(stdout, "[Network]: OFFLINE Mode, not starting Network loop\n");
@@ -188,20 +176,20 @@ namespace Network {
     *name = FullUrl.substr(HandlePtr + 1, FullUrl.size() - HandlePtr);
   }
   void UpdateShaderFileName(const char** shaderName) {
-    if (config.Mode == OFFLINE) return;
+    if (IsOffline()) return;
     std::string HostPort, RoomName, NickName, filename;
     Network::SplitUrl(&HostPort, &RoomName, &NickName);
-    if (config.Mode == SENDER) {
+    if (IsSender()) {
       filename = SHADER_FILENAME("sender");
     }
-    else if(config.Mode == GRABBER) {
+    else if(IsGrabber()) {
       filename = SHADER_FILENAME("grabber");
     }
     *shaderName = strdup(filename.c_str());
   }
   void UpdateShader(ShaderEditor* mShaderEditor, float shaderTime, std::map<int, std::string> *midiRoutes) {
-    if (Network::config.Mode != Network::NetworkMode::OFFLINE) { // If we arn't offline mode
-      if (config.Mode == Network::GRABBER && Network::HasNewShader()) { // Grabber mode
+    if (!IsOffline()) { // If we arn't offline mode
+      if (IsGrabber()  && HasNewShader()) { // Grabber mode
 
         int PreviousTopLine = mShaderEditor->WndProc(SCI_GETFIRSTVISIBLELINE, 0, 0);
         int PreviousTopDocLine = mShaderEditor->WndProc(SCI_DOCLINEFROMVISIBLE, PreviousTopLine, 0);
@@ -219,7 +207,7 @@ namespace Network {
         mg_ws_send(c, 0, 0, WEBSOCKET_OP_BINARY); // Send Ping to Sender to notify received
 
       }
-      else if (config.Mode == Network::SENDER && shaderTime - shaderMessage.shaderTime > 0.1) {
+      else if (IsSender() && shaderTime - shaderMessage.shaderTime > 0.1) {
         //std::cout << shaderTime<<"-"<<ShaderMessage.shaderTime << "="<< shaderTime - ShaderMessage.shaderTime << std::endl;
 
         mShaderEditor->GetText(szShader, 65535);
@@ -291,12 +279,11 @@ namespace Network {
     return &handle;
   }
   void SyncTimeWithSender(float* time) {
-    if (!IsConnected || !IsGrabber() || !config.syncTimeWithSender) return;
-    
-    // 5 - 3 => 2  
+    if (!IsConnected() || !IsGrabber() || !config.syncTimeWithSender) return;
+
     if (IsNewShader && abs(*time + timeOffset - shaderMessage.shaderTime) > 1.f) {
       timeOffset = shaderMessage.shaderTime - *time;
-      printf("<diff>%f\n", (timeOffset));
+      // printf("<diff>%f\n", (timeOffset));
     }
 
   }
@@ -309,17 +296,17 @@ namespace Network {
   /* From here are methods for parsing json */
   void ParseSyncTimeWithSender(jsonxx::Object* network) {
     if (!network->has<jsonxx::Boolean>("syncTimeWithSender")) {
-      LOG("JSON Network Configuration Parsing", "Can't find 'syncTimeWithSender', set to true");
+      fprintf(stderr,"[JSON Network Configuration Parsing] " "Can't find 'syncTimeWithSender', set to true\n");
       config.syncTimeWithSender = true;
       return;
     }
-    LOG("JSON Network Configuration Parsing", "ParseSyncTimeWithSender");
+    fprintf(stderr, "[JSON Network Configuration Parsing] " "ParseSyncTimeWithSender");
     config.syncTimeWithSender = network->get<jsonxx::Boolean>("syncTimeWithSender");
     printf("%i\n", config.syncTimeWithSender);
   }
   void ParseNetworkGrabMidiControls(jsonxx::Object * network) {
     if (!network->has<jsonxx::Boolean>("grabMidiControls")) {
-      LOG("JSON Network Configuration Parsing", "Can't find 'grabMidiControls', set to false");
+      fprintf(stderr,"[JSON Network Configuration Parsing] " "Can't find 'grabMidiControls', set to false\n");
       config.grabMidiControls = false;
       return;
     }
@@ -327,7 +314,7 @@ namespace Network {
   }
   void ParseNetworkSendMidiControls(jsonxx::Object* network) {
     if (!network->has<jsonxx::Boolean>("sendMidiControls")) {
-      LOG("JSON Network Configuration Parsing", "Can't find 'sendMidiControls', set to false");
+      fprintf(stderr, "[JSON Network Configuration Parsing] " "Can't find 'sendMidiControls', set to false\n");
       config.sendMidiControls = false;
       return;
     }
@@ -335,7 +322,7 @@ namespace Network {
   }
   void ParseNetworkUpdateInterval(jsonxx::Object* network) {
     if (!network->has<jsonxx::Boolean>("updateInterval")) {
-      LOG("JSON Network Configuration Parsing", "Can't find 'updateInterval', set to 0.3");
+      fprintf(stderr, "[JSON Network Configuration Parsing] " "Can't find 'updateInterval', set to 0.3\n");
       config.updateInterval = 0.3f;
       return;
     }
@@ -344,23 +331,25 @@ namespace Network {
   }
   void ParseNetworkMode(jsonxx::Object* network) {
     if (!network->has<jsonxx::String>("networkMode")) {
-      LOG("JSON Network Configuration Parsing", "Can't find 'networkMode' Set to OFFLINE");
+      fprintf(stderr, "[JSON Network Configuration Parsing] " "Can't find 'networkMode' Set to OFFLINE\n");
       config.Mode = OFFLINE;
       return;
     }
 
     const char* mode = network->get<jsonxx::String>("networkMode").c_str();
-    bool isSenderMode = strcmp(mode, "sender");
-    bool isGrabberMode = strcmp(mode, "grabber");
+    bool isSenderMode = strcmp(mode, "sender") == 0;
+    bool isGrabberMode = strcmp(mode, "grabber") == 0;
     if (!isSenderMode && !isGrabberMode) {
-      LOG("JSON Network Configuration Parsing", "networkMode is neither SENDER or GRABBER, fallback config to OFFLINE");
+      fprintf(stderr, "[JSON Network Configuration Parsing] " "networkMode is neither SENDER or GRABBER, fallback config to OFFLINE\n");
       config.Mode = OFFLINE;
       return;
     }
     if(isSenderMode){
+      fprintf(stderr, "[JSON Network Configuration Parsing] " "networkMode is set to SENDER\n");
       config.Mode = SENDER;
     }
     if(isGrabberMode){
+      fprintf(stderr, "[JSON Network Configuration Parsing] " "networkMode is set to GRABBER\n");
       config.Mode = GRABBER;
     }
 
@@ -372,7 +361,7 @@ namespace Network {
   }
   void ParseNetworkUrl(jsonxx::Object* network) {
     if (!network->has<jsonxx::String>("serverURL")) {
-      LOG("JSON Network Configuration Parsing", "Can't find 'serverURL', set to 'OFFLINE'");
+      fprintf(stderr, "[JSON Network Configuration Parsing] " "Can't find 'serverURL', set to 'OFFLINE'\n");
       config.Mode = OFFLINE;
       config.Url = "";
       return;
@@ -386,14 +375,14 @@ namespace Network {
   void ParseNetworkEnabled(jsonxx::Object* network) {
  
     if (!network->has<jsonxx::Boolean>("enabled")) {
-      LOG("JSON Network Configuration Parsing", "Can't find 'enabled', set to 'OFFLINE'");
+      fprintf(stderr,"[JSON Network Configuration Parsing] " "Can't find 'enabled', set to 'OFFLINE'\n");
       config.Mode = OFFLINE;
       config.Url = "";
       return;
     }
 
     if (!network->get<jsonxx::Boolean>("enabled")) {
-      LOG("JSON Network Configuration Parsing", "Set to 'OFFLINE'");
+      fprintf(stderr, "[JSON Network Configuration Parsing] " "Set to 'OFFLINE'\n");
       config.Mode = OFFLINE;
       config.Url = "";
       // As we can activate this on setup dialog, let's try to get serverURL
@@ -418,9 +407,9 @@ namespace Network {
     */
   void ParseSettings(jsonxx::Object* options) {
     
-    LOG("JSON Network Configuration Parsing", "Parsing network configuration data from json");
+    fprintf(stderr, "[JSON Network Configuration Parsing] " "Parsing network configuration data from json\n");
     if (!options->has<jsonxx::Object>("network")) {
-      LOG("JSON Network Configuration Parsing", "Can't find 'network' block, set to 'OFFLINE'");
+      fprintf(stderr, "[JSON Network Configuration Parsing] " "Can't find 'network' block, set to 'OFFLINE'\n");
       config.Mode = OFFLINE;
       config.Url = "";
       return;

@@ -36,7 +36,6 @@ namespace Network {
 
  
     
-    void PrintConfig();
     bool HasNewShader();
     bool ReloadShader();
     void RecieveShader(size_t size, char* data);
@@ -64,5 +63,6 @@ namespace Network {
     float TimeOffset();
     void ResetTimeOffset(float* time);
     bool IsPinged();
+    void ChecktNetwork();
 }
 #endif // BONZOMATIC_NETWORK_H

@@ -22,9 +22,22 @@
     "texTex3":"textures/tex3.jpg",
     "texTex4":"textures/tex4.jpg"
   },
+  "theme": {
+    "text": "FFEFE1",
+    "comment": "B362FF",
+    "number": "FF628C",
+    "op": "CCEEFF",
+    "keyword": "FFFF60",
+    "type": "80BBFF",
+    "builtin": "FF9D00",
+    "preprocessor": "FF80FF",
+    "selection": "C06699CC",
+    "codername": "80FFFFFF",
+    "charBackground": "A0000000"
+  },
   "gui":{
     "outputHeight": 100,
-    "opacity": 192,
+    "opacity": 0,
     "texturePreviewWidth": 100
   },
   "network": {

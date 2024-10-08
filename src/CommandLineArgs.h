@@ -14,6 +14,7 @@ namespace CommandLineArgs
         bool skipDialog;
         const char* configFile;
         const char* shaderFile;
+
        
     } Args;
 
@@ -55,16 +56,13 @@ namespace CommandLineArgs
             if(strcmp(argv[i],"networkMode")==0) {
                 i++;
                 assert_tuple_arg;
-                if(strcmp(argv[i],"grabber")){
-                    //Network::config.Mode = Network::NetworkMode::GRABBER;
+                if(strcmp(argv[i],"grabber") == 0){
                     continue;
                 }
-                if(strcmp(argv[i],"sender")){
-                    //Network::config.Mode = Network::NetworkMode::SENDER;
+                if(strcmp(argv[i],"sender") == 0){
                     continue;
                 }
-                if(strcmp(argv[i],"offline")){
-                   // Network::config.Mode = Network::NetworkMode::OFFLINE;
+                if(strcmp(argv[i],"offline") == 0){
                     continue;
                 }
             }        
