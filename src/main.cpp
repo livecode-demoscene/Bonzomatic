@@ -74,11 +74,12 @@ int main( int argc, const char * argv[] )
   Misc::PlatformStartup();
 
   const char * configFile = "config.json";
-  
-  CommandLineArgs::parse_args(argc,argv);
+
+  CommandLineArgs::parse_args(argc, argv);
+
   if ( argc > 1 )
   {
-    configFile = CommandLineArgs::Args.configFile;
+    configFile = CommandLineArgs::configFile;
     printf( "Loading config file '%s'...\n", configFile );
   }
   else
@@ -141,12 +142,17 @@ int main( int argc, const char * argv[] )
       settings.sRenderer.borderless = options.get<jsonxx::Object>( "window" ).get<jsonxx::Boolean>( "borderless" );
 
   }
-  if ( !skipSetupDialog )
+
+  if ( !skipSetupDialog && !CommandLineArgs::skipDialog)
   {
     if ( !SetupDialog::Open( &settings ) )
     {
       return -1;
     }
+  }
+  else {
+    printf("lol");
+    CommandLineArgs::replace();
   }
 #endif
 
