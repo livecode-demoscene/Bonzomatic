@@ -152,7 +152,7 @@ int main( int argc, const char * argv[] )
   }
   else {
     printf("lol");
-    CommandLineArgs::replace();
+    CommandLineArgs::replace(&settings.sRenderer);
   }
 #endif
 

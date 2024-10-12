@@ -20,8 +20,11 @@ namespace CommandLineArgs
 
         bool optNetworkMode = false;
         Network::NetworkMode networkMode;
+
+        bool optBorderless = false;
+        bool borderless = false;
   
-    void replace() {
+    void replace(Renderer::Settings* settings) {
   
       if (optServerURL) {
         Network::SetUrl(serverURL);
@@ -29,6 +32,9 @@ namespace CommandLineArgs
 
       if (optNetworkMode) {
         Network::SetNetworkMode(networkMode);
+      }
+      if (optBorderless) {
+        settings->borderless = borderless;
       }
     }
     void parse_args(int argc,const char *argv[]) {
@@ -57,6 +63,12 @@ namespace CommandLineArgs
                 assert_tuple_arg;
                 shaderFile = argv[i];
                 continue;
+            }
+
+            if (strcmp(argv[i], "borderless") == 0) {
+              borderless = true;
+              optBorderless = true;
+              continue;
             }
 
             if(strcmp(argv[i],"serverURL")==0) {
