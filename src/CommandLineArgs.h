@@ -44,55 +44,57 @@ namespace CommandLineArgs
         //Network::config.Mode = Network::NetworkMode::OFFLINE;
         //Network::config.Url = "ws://drone.alkama.com:9000/roomname/username";
 
-        for(size_t i=0;i<argc;++i) {
-
-            if(strcmp(argv[i],"skipdialog")==0){
+        for(size_t i=0;i<argc;i++) {
+            if (strlen(argv[i]) <= 0) continue;
+            char * token = strtok((char *)argv[i], "=");
+            
+            if(strcmp(token,"skipdialog")==0){
                 skipDialog = true;
                 continue;
             }
 
-            if(strcmp(argv[i],"configfile")==0) {
-                i++;
+            if(strcmp(token,"configfile")==0) {
+                token = strtok(NULL, "=");
                 assert_tuple_arg;
-                configFile = argv[i];
+                strcpy((char *)configFile,token);
                 continue;
             }
 
-            if(strcmp(argv[i],"shader")==0) {
-                i++;
+            if(strcmp(token,"shader")==0) {
+                token = strtok(NULL, "=");
                 assert_tuple_arg;
-                shaderFile = argv[i];
+                strcpy((char*)configFile, token);
                 continue;
             }
 
-            if (strcmp(argv[i], "borderless") == 0) {
+            if (strcmp(token, "borderless") == 0) {
               borderless = true;
               optBorderless = true;
               continue;
             }
 
-            if(strcmp(argv[i],"serverURL")==0) {
-                i++;
+            if(strcmp(token,"serverURL")==0) {
+                token = strtok(NULL, "=");
                 assert_tuple_arg;
                 optServerURL = true;
-                strcpy(serverURL, argv[i]);
-                //Network::NetworkConfig.Url = argv[i];
+                strcpy(serverURL, token);
+                
                 continue;
             }
 
-            if(strcmp(argv[i],"networkMode") == 0) {
-                i++;
+            if(strcmp(token,"networkMode") == 0) {
+                token = strtok(NULL, "=");
                 assert_tuple_arg;
                 optNetworkMode = true;
-                if(strcmp(argv[i],"grabber") == 0){
+                if(strcmp(token,"grabber") == 0){
                     networkMode = Network::NetworkMode::GRABBER;
                     continue;
                 }
-                if(strcmp(argv[i],"sender") == 0){
+                if(strcmp(token,"sender") == 0){
                     networkMode = Network::NetworkMode::SENDER;
                     continue;
                 }
-                if(strcmp(argv[i],"offline") == 0){
+                if(strcmp(token,"offline") == 0){
                     networkMode = Network::NetworkMode::OFFLINE;
                     continue;
                 }

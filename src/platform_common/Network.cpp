@@ -16,15 +16,16 @@ namespace Network {
     bool IsNewShader = false;
     char szShader[65535];
     bool connected = false;
-    std::string handle;
-
+    std::string HostPort, RoomName, NickName;
     float pingTime = 0.f;
     bool isFirstShaderCompile = true;
   char* GetUrl() {
       return config.Url;
   }
   void SetUrl( char* url) {
+
     config.Url =url;
+    Network::SplitUrl(&HostPort, &RoomName, &NickName);
   }
   Network::NetworkMode GetNetworkMode() {
     return config.Mode;
@@ -177,8 +178,8 @@ namespace Network {
   }
   void UpdateShaderFileName(const char** shaderName) {
     if (IsOffline()) return;
-    std::string HostPort, RoomName, NickName, filename;
-    Network::SplitUrl(&HostPort, &RoomName, &NickName);
+    std::string filename;
+
     if (IsSender()) {
       filename = SHADER_FILENAME("sender");
     }
@@ -224,8 +225,8 @@ namespace Network {
         Data << "Caret" << shaderMessage.CaretPosition;
         Data << "Anchor" << shaderMessage.AnchorPosition;
         Data << "FirstVisibleLine" << shaderMessage.FirstVisibleLine;
-        Data << "RoomName" << "RoomName";
-        Data << "NickName" << "NickName";
+        Data << "RoomName" << RoomName;
+        Data << "NickName" << NickName;
         Data << "ShaderTime" << shaderMessage.shaderTime;
 
         if(config.sendMidiControls) { // Sending Midi Controls
@@ -265,7 +266,7 @@ namespace Network {
     }
     std::string host, roomname, user, title(*originalTitle), newName;
     Network::SplitUrl(&host, &roomname, &user);
-    handle = user;
+    NickName = user;
     if (IsGrabber()) {
       newName = title + " grabber " + user;
     } 
@@ -276,7 +277,7 @@ namespace Network {
   }
 
   std::string* GetHandle() {
-    return &handle;
+    return &NickName;
   }
   void SyncTimeWithSender(float* time) {
     if (!IsConnected() || !IsGrabber() || !config.syncTimeWithSender) return;
