@@ -469,6 +469,7 @@ if (WIN32)
 # MacOS
 elseif (APPLE)
   set_target_properties(${BZC_EXE_NAME} PROPERTIES MACOSX_BUNDLE ON MACOSX_BUNDLE_BUNDLE_NAME "Bonzomatic" MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/data/macosx/MacOSXBundleInfo.plist.in)
+  set_target_properties(${BZC_EXE_NAME} PROPERTIES XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS ${CMAKE_SOURCE_DIR}/data/macosx/entitlements.plist)
   if (BONZOMATIC_TOUCHBAR)
     target_compile_definitions(${BZC_EXE_NAME} PUBLIC -DBONZOMATIC_ENABLE_TOUCHBAR)
   endif ()
