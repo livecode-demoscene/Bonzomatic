@@ -179,7 +179,7 @@ namespace Network {
   void UpdateShaderFileName(const char** shaderName) {
     if (IsOffline()) return;
     std::string filename;
-
+    Network::SplitUrl(&HostPort, &RoomName, &NickName);
     if (IsSender()) {
       filename = SHADER_FILENAME("sender");
     }
@@ -205,6 +205,28 @@ namespace Network {
         //mShaderEditor.WndProc(SCI_SETFIRSTVISIBLELINE, NewMessage.FirstVisibleLine, 0);
         mShaderEditor->WndProc(SCI_SCROLLCARET, 0, 0);
         //}
+
+        /*if (config.grabMidiControls && Data.has<jsonxx::Object>("Parameters")) {
+          const std::map<std::string, jsonxx::Value*>& shadParams = Data.get<jsonxx::Object>("Parameters").kv_map();
+          for (auto it = shadParams.begin(); it != shadParams.end(); it++)
+          {
+            float goalValue = it->second->number_value_;
+            auto cache = networkParamCache.find(it->first);
+            if (cache == networkParamCache.end()) {
+              ShaderParamCache newCache;
+              newCache.lastValue = goalValue;
+              newCache.currentValue = goalValue;
+              newCache.goalValue = goalValue;
+              newCache.duration = duration;
+              networkParamCache[it->first] = newCache;
+              cache = networkParamCache.find(it->first);
+            }
+            ShaderParamCache& cur = cache->second;
+            cur.lastValue = cur.currentValue;
+            cur.goalValue = goalValue;
+            cur.duration = duration;
+          }
+        }*/
         mg_ws_send(c, 0, 0, WEBSOCKET_OP_BINARY); // Send Ping to Sender to notify received
 
       }

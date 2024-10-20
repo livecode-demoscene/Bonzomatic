@@ -114,10 +114,13 @@ int main( int argc, const char * argv[] )
   SetupDialog::SETTINGS settings;
   settings.sFFT.bUseRecordingDevice = true;
   settings.sFFT.pDeviceID = NULL;
+  settings.sFFT.sCaptureDeviceSearchString = "";
   if ( options.has<jsonxx::Object>( "audio" ) )
   {
     if ( options.get<jsonxx::Object>( "audio" ).has<jsonxx::Boolean>( "useInput" ) )
       settings.sFFT.bUseRecordingDevice = options.get<jsonxx::Object>( "audio" ).get<jsonxx::Boolean>( "useInput" );
+    if (options.get<jsonxx::Object>("audio").has<jsonxx::String>("captureDeviceSearchString"))
+      settings.sFFT.sCaptureDeviceSearchString = options.get<jsonxx::Object>("audio").get<jsonxx::String>("captureDeviceSearchString").c_str();
   }
 
   settings.sRenderer.bVsync = false;

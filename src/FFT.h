@@ -8,6 +8,7 @@ struct Settings
 {
   bool bUseRecordingDevice;
   void * pDeviceID;
+  const char * sCaptureDeviceSearchString;
 };
 
 typedef void ( *FFT_ENUMERATE_FUNC )( const bool bIsCaptureDevice, const char * szDeviceName, void * pDeviceID, void * pUserContext );
