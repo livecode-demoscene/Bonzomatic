@@ -248,6 +248,23 @@ if (WIN32 AND BONZOMATIC_NDI)
     set(BZC_PROJECT_LIBS ${BZC_PROJECT_LIBS} "${NDI_SDK_DIR}/Lib/x86/Processing.NDI.Lib.x86.lib")
   endif ()
 endif ()
+##############################################################################
+# MONGOOSE NETWORK
+set(BZC_PROJECT_INCLUDES ${BZC_PROJECT_INCLUDES} ${CMAKE_SOURCE_DIR}/external/mongoose)
+set(MONGOOSE_SRCS
+	${CMAKE_SOURCE_DIR}/external/mongoose/mongoose.c
+)
+add_library(bzc_mongoose STATIC ${MONGOOSE_SRCS})
+
+target_include_directories(bzc_mongoose PUBLIC ${CMAKE_SOURCE_DIR}/external/mongoose)
+if (MSVC)
+	target_compile_options(bzc_mongoose PUBLIC "$<$<CONFIG:Release>:/MT>")
+endif ()	
+set(BZC_PROJECT_LIBS ${BZC_PROJECT_LIBS} bzc_mongoose)
+
+
+set(BZC_NETWORK_SRCS ${CMAKE_SOURCE_DIR}/src/platform_common/Network.cpp)
+source_group("Bonzomatic\\Network" FILES ${BZC_NETWORK_SRCS})
 
 ##############################################################################
 # SCINTILLA
@@ -419,7 +436,7 @@ else ()
 endif ()
 source_group("Bonzomatic\\Capture" FILES ${BZC_CAPTURE_SRCS})
 
-set(BZC_PROJECT_SRCS ${BZC_PROJECT_SRCS} ${BZC_PLATFORM_SRCS} ${BZC_RESOURCES_DATA} ${BZC_CAPTURE_SRCS})
+set(BZC_PROJECT_SRCS ${BZC_PROJECT_SRCS} ${BZC_PLATFORM_SRCS} ${BZC_RESOURCES_DATA} ${BZC_CAPTURE_SRCS} ${BZC_NETWORK_SRCS})
 
 set(BZC_PROJECT_INCLUDES ${CMAKE_SOURCE_DIR}/src ${BZC_PROJECT_INCLUDES})
 
@@ -452,6 +469,7 @@ if (WIN32)
 # MacOS
 elseif (APPLE)
   set_target_properties(${BZC_EXE_NAME} PROPERTIES MACOSX_BUNDLE ON MACOSX_BUNDLE_BUNDLE_NAME "Bonzomatic" MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/data/macosx/MacOSXBundleInfo.plist.in)
+  set_target_properties(${BZC_EXE_NAME} PROPERTIES XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS ${CMAKE_SOURCE_DIR}/data/macosx/entitlements.plist)
   if (BONZOMATIC_TOUCHBAR)
     target_compile_definitions(${BZC_EXE_NAME} PUBLIC -DBONZOMATIC_ENABLE_TOUCHBAR)
   endif ()

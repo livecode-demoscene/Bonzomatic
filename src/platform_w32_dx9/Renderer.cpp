@@ -170,7 +170,7 @@ char defaultVertexShader[ 65536 ] =
 "}\n";
 
 bool run = true;
-
+bool sizeChanged =false;
 LPDIRECT3D9 pD3D = NULL;
 LPDIRECT3DDEVICE9 pDevice = NULL;
 LPD3DXCONSTANTTABLE pConstantTable = NULL;
