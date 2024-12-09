@@ -2,6 +2,7 @@
 #include "MIDI.h"
 #include <math.h>
 #include <Timer.h>
+#include <mutex>
 #define SHADER_FILENAME(mode) (std::string(mode)+ "_" + RoomName + "_" + NickName + ".glsl")
 namespace Network {
 
@@ -13,6 +14,7 @@ namespace Network {
     struct mg_connection* c;
     bool done = false;
     std::thread* tNetwork = NULL;
+    std::mutex network_interface_access_mutex ;
     bool IsNewShader = false;
     char szShader[65535];
     bool connected = false;
@@ -128,7 +130,7 @@ namespace Network {
   }
   void Create() {
     fprintf(stdout, "[Network]: Try to connect to %s\n", config.Url);
-    mg_mgr_init(&mgr);
+
     c = mg_ws_connect(&mgr, config.Url, fn, &done, NULL);
     if (c == NULL) {
       fprintf(stderr, "Invalid address\n");
@@ -140,7 +142,7 @@ namespace Network {
     mg_mgr_free(&mgr);
   }
 
-  void ChecktNetwork() {
+  void CheckNetwork() {
     if (!IsConnected() && !IsOffline()) {
         connected = true;
         fprintf(stdout, "[Network]: Starting Thread\n");
@@ -150,9 +152,17 @@ namespace Network {
   
     }
   }
+  void timer_fn(void* arg) {
+
+    if (c == NULL) {
+      c = mg_ws_connect(&mgr, config.Url, fn, &done, NULL);
+    }
+  }
   void Init() {
+    mg_mgr_init(&mgr);
+    mg_timer_add(&mgr, 3000, MG_TIMER_REPEAT | MG_TIMER_RUN_NOW, timer_fn, &mgr);
     if(config.Mode != OFFLINE){
-        ChecktNetwork();
+      CheckNetwork();
     }
     else {
       fprintf(stdout, "[Network]: OFFLINE Mode, not starting Network loop\n");

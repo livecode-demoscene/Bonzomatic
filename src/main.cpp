@@ -453,7 +453,7 @@ int main( int argc, const char * argv[] )
   while ( !Renderer::WantsToQuit() )
   {
 
-    Network::ChecktNetwork();
+    //Network::CheckNetwork();
     bool newShader = false;
     
     float time = Timer::GetTime() / 1000.0; // seconds
