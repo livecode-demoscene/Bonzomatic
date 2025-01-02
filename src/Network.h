@@ -59,7 +59,8 @@ namespace Network {
     bool IsConnected();
     std::string* GetHandle();
     void GenerateWindowsTitle(char** originalTitle);
-    void SyncTimeWithSender(float* time);
+    void SyncTime(float* time);
+    bool IsGrabberReceiving();
     float TimeOffset();
     void ResetTimeOffset(float* time);
     bool IsPinged();

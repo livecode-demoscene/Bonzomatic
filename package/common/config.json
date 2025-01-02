@@ -41,7 +41,7 @@
     "texturePreviewWidth": 100
   },
   "network": {
-    "enabled": false,
+    "enabled": true,
     "serverURL": "ws://drone.alkama.com:9000/roomname/handle",
     "networkMode": "sender", 
     "updateInterval": 0.5, 

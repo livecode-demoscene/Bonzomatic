@@ -21,6 +21,8 @@ namespace Network {
     std::string HostPort, RoomName, NickName;
     float pingTime = 0.f;
     bool isFirstShaderCompile = true;
+    float grabber_last_receive = 0;
+    float grabber_time = 0;
   char* GetUrl() {
       return config.Url;
   }
@@ -115,7 +117,7 @@ namespace Network {
     else if (ev == MG_EV_WS_MSG && config.Mode == GRABBER) {
 
       struct mg_ws_message* wm = (struct mg_ws_message*)ev_data;
-     
+      
       if(wm->data.len>0) {
        RecieveShader((int)wm->data.len, wm->data.buf);
       }
@@ -201,7 +203,7 @@ namespace Network {
   void UpdateShader(ShaderEditor* mShaderEditor, float shaderTime, std::map<int, std::string> *midiRoutes) {
     if (!IsOffline()) { // If we arn't offline mode
       if (IsGrabber()  && HasNewShader()) { // Grabber mode
-
+        grabber_last_receive = grabber_time;
         int PreviousTopLine = mShaderEditor->WndProc(SCI_GETFIRSTVISIBLELINE, 0, 0);
         int PreviousTopDocLine = mShaderEditor->WndProc(SCI_DOCLINEFROMVISIBLE, PreviousTopLine, 0);
         int PreviousTopLineTotal = PreviousTopDocLine;
@@ -292,6 +294,9 @@ namespace Network {
   bool IsConnected() {
     return connected;
   }
+  bool IsGrabberReceiving() {
+    return abs(grabber_time-grabber_last_receive)<3.;
+  }
   void GenerateWindowsTitle(char** originalTitle) {
     if (IsOffline()) {
       return;
@@ -311,7 +316,8 @@ namespace Network {
   std::string* GetHandle() {
     return &NickName;
   }
-  void SyncTimeWithSender(float* time) {
+  void SyncTime(float* time) {
+    grabber_time = *time;
     if (!IsConnected() || !IsGrabber() || !config.syncTimeWithSender) return;
 
     if (IsNewShader && abs(*time + timeOffset - shaderMessage.shaderTime) > 1.f) {

@@ -457,7 +457,7 @@ int main( int argc, const char * argv[] )
     bool newShader = false;
     
     float time = Timer::GetTime() / 1000.0; // seconds
-    Network::SyncTimeWithSender(&time);
+    Network::SyncTime(&time);
     Renderer::StartFrame();
 
     for ( int i = 0; i < Renderer::mouseEventBufferCount; i++ )
@@ -674,7 +674,7 @@ int main( int argc, const char * argv[] )
       surface->DrawTextNoClip( Scintilla::PRectangle( 20, Renderer::nHeight - 20, 100, Renderer::nHeight ), *mShaderEditor.GetTextFont(), Renderer::nHeight - 5.0, sHelp.c_str(), (int) sHelp.length(), 0x80FFFFFF, 0x00000000 );
     
     }
-    if(bShowGui && !Network::IsOffline() && !Network::IsConnected()){ // Activity Square, might store data to avoid recalculating font widht
+    if(bShowGui && (Network::IsSender() && !Network::IsConnected()) || (Network::IsGrabber() && !Network::IsGrabberReceiving())) { // Activity Square, might store data to avoid recalculating font widht
       int TexPreviewOffset = bTexPreviewVisible ? nTexPreviewWidth + nMargin : 0;
       surface->RectangleDraw(Scintilla::PRectangle(Renderer::nWidth - nMargin - networkHandleFontWidth-10, Renderer::nHeight - nMargin - 50, Renderer::nWidth - nMargin - networkHandleFontWidth, Renderer::nHeight - nMargin - 50 + editorOptions.nFontSize), 0x00000000, 0xff8080FF);
 

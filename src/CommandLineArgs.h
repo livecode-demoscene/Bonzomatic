@@ -56,14 +56,14 @@ namespace CommandLineArgs
             if(strcmp(token,"configfile")==0) {
                 token = strtok(NULL, "=");
                 assert_tuple_arg;
-                strcpy((char *)configFile,token);
+                configFile = strdup(token);
                 continue;
             }
 
             if(strcmp(token,"shader")==0) {
                 token = strtok(NULL, "=");
                 assert_tuple_arg;
-                strcpy((char*)configFile, token);
+                shaderFile = strdup(token);
                 continue;
             }
 
