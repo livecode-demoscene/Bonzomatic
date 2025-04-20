@@ -1,3 +1,4 @@
+#include "../Network.h"
 #include <windows.h>
 #ifdef __MINGW32__
 #include <stdio.h>
@@ -5,11 +6,15 @@
 #include <tchar.h>
 #include "../Renderer.h"
 #include "../FFT.h"
+
 #include "../SetupDialog.h"
+
 #include "resource.h"
 
 #include <vector>
 #include <algorithm>
+#include <iostream>
+
 
 namespace SetupDialog
 {
@@ -64,7 +69,7 @@ public:
   void FFTDeviceEnum( const bool bIsCaptureDevice, const char * szDeviceName, void * pDeviceID )
   {
     TCHAR sz[ 512 ];
-    _sntprintf( sz, 512, _T( "[%hs] %hs" ), bIsCaptureDevice ? "in" : "out", szDeviceName );
+    _sntprintf_s( sz, 512, _T( "[%hs] %hs" ), bIsCaptureDevice ? "in" : "out", szDeviceName );
     SendDlgItemMessage( hWndSetupDialog, IDC_AUDIOSOURCE, CB_ADDSTRING, 0, (LPARAM) sz );
 
     if ( !pDeviceID )
@@ -86,6 +91,10 @@ public:
   }
   bool DialogProcedure( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
   {
+
+   
+
+
     switch ( uMsg ) 
     {
       case WM_INITDIALOG:
@@ -120,8 +129,9 @@ public:
           for ( i = 0; i < gaResolutions.size(); i++ )
           {
             TCHAR s[ 50 ];
-            _sntprintf( s, 50, _T( "%d * %d" ), gaResolutions[ i ].nWidth, gaResolutions[ i ].nHeight );
+            _sntprintf_s( s, 50, _T( "%d * %d" ), gaResolutions[ i ].nWidth, gaResolutions[ i ].nHeight );
             SendDlgItemMessage( hWnd, IDC_RESOLUTION, CB_ADDSTRING, 0, (LPARAM) s );
+
 
             if ( gaResolutions[ i ].nWidth == setup->sRenderer.nWidth && gaResolutions[ i ].nHeight == setup->sRenderer.nHeight )
             {
@@ -134,15 +144,57 @@ public:
             }
           }
 
-          if ( setup->sRenderer.windowMode == Renderer::WINDOWMODE_FULLSCREEN ) 
-          {
-            SendDlgItemMessage( hWnd, IDC_FULLSCREEN, BM_SETCHECK, 1, 1 );
-          }
-          if ( setup->sRenderer.bVsync ) 
-          {
-            SendDlgItemMessage( hWnd, IDC_VSYNC, BM_SETCHECK, 1, 1 );
-          }
+         
+            if ( setup->sRenderer.windowMode == Renderer::WINDOWMODE_FULLSCREEN ) 
+            {
+              SendDlgItemMessage( hWnd, IDC_FULLSCREEN, BM_SETCHECK, 1, 1 );
+            }
+            if ( setup->sRenderer.bVsync ) 
+            {
+              SendDlgItemMessage( hWnd, IDC_VSYNC, BM_SETCHECK, 1, 1 );
+            }
 
+     
+          { // Parsing url, could everthing be inside Network.h ? 
+              TCHAR s[50];
+              _sntprintf_s(s, 50, _T("SENDER"));
+              SendDlgItemMessage(hWnd, IDC_NETWORK_MODE, CB_ADDSTRING, 0, (LPARAM)s);
+              _sntprintf_s(s, 50, _T("GRABBER"));
+              SendDlgItemMessage(hWnd, IDC_NETWORK_MODE, CB_ADDSTRING, 0, (LPARAM)s);
+
+              
+              SendDlgItemMessage(hWnd, IDC_NETWORK_MODE, CB_SETCURSEL, 0, 0);
+              switch (Network::GetNetworkMode()) {
+              case Network::OFFLINE:
+                SendDlgItemMessage(hWnd, IDC_NETWORK, BM_SETCHECK, 0, 0);
+                // Activate 
+                break;
+              case Network::SENDER:
+                SendDlgItemMessage(hWnd, IDC_NETWORK, BM_SETCHECK, 1, 1);
+                SendDlgItemMessage(hWnd, IDC_NETWORK_MODE, CB_SETCURSEL, 0, 0);
+                EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_MODE), TRUE);
+                EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_NICKNAME), TRUE);
+                EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_ROOMNAME), TRUE);
+                EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_SERVER), TRUE);
+                break;
+              case Network::GRABBER:
+                SendDlgItemMessage(hWnd, IDC_NETWORK, BM_SETCHECK, 1, 1);
+                SendDlgItemMessage(hWnd, IDC_NETWORK_MODE, CB_SETCURSEL, 1, 0);
+                EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_MODE), TRUE);
+                EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_NICKNAME), TRUE);
+                EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_ROOMNAME), TRUE);
+                EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_SERVER), TRUE);
+                break;
+              }
+            
+        
+            std::string HostPort, RoomName, NickName;
+            Network::SplitUrl(&HostPort, &RoomName, &NickName);
+  
+            SetDlgItemText(hWnd, IDC_NETWORK_SERVER, HostPort.c_str());
+            SetDlgItemText(hWnd, IDC_NETWORK_ROOMNAME, RoomName.c_str());
+            SetDlgItemText(hWnd, IDC_NETWORK_NICKNAME, NickName.c_str());
+          }
           FFT::EnumerateDevices( FFTDeviceEnum, this );
 
           return true;
@@ -150,6 +202,7 @@ public:
 
       case WM_COMMAND:
         {
+
           switch ( LOWORD( wParam ) )
           {
             case IDOK:
@@ -161,7 +214,57 @@ public:
 
                 setup->sFFT.bUseRecordingDevice = gaAudioDevices[ SendDlgItemMessage( hWnd, IDC_AUDIOSOURCE, CB_GETCURSEL, 0, 0 ) ].bIsCapture;
                 setup->sFFT.pDeviceID = gaAudioDevices[ SendDlgItemMessage( hWnd, IDC_AUDIOSOURCE, CB_GETCURSEL, 0, 0 ) ].pDeviceID;
+
+                {// Network
+                  int ServerLen = SendDlgItemMessage(hWnd, IDC_NETWORK_SERVER, WM_GETTEXTLENGTH, 0, 0);
+                  char ServerName[512];
+                  GetDlgItemText(hWnd, IDC_NETWORK_SERVER, ServerName, min(ServerLen + 1, 511));
+
+                  int RoomLen = SendDlgItemMessage(hWnd, IDC_NETWORK_ROOMNAME, WM_GETTEXTLENGTH, 0, 0);
+                  char RoomName[512];
+                  GetDlgItemText(hWnd, IDC_NETWORK_ROOMNAME, RoomName, min(RoomLen + 1, 511));
+
+                  int NickLen = SendDlgItemMessage(hWnd, IDC_NETWORK_NICKNAME, WM_GETTEXTLENGTH, 0, 0);
+                  char NickName[512];
+                  GetDlgItemText(hWnd, IDC_NETWORK_NICKNAME, NickName, min(NickLen + 1, 511));
+                  std::string FullUrl = std::string(ServerName) + "/" + RoomName + "/" + NickName;
+                
+                  Network::SetUrl(_strdup(FullUrl.c_str()));
+                  if (SendDlgItemMessage(hWnd, IDC_NETWORK, BM_GETCHECK, 0, 0) == false) { // Offline
+                    Network::SetNetworkMode(Network::OFFLINE);
+                  }
+                  else {
+                    if (SendDlgItemMessage(hWnd, IDC_NETWORK_MODE, CB_GETCURSEL, 0, 0) == 0) { //SENDER
+                      Network::SetNetworkMode(Network::SENDER);
+                    }
+                    else {
+                      Network::SetNetworkMode(Network::GRABBER);
+                    }
+                  }
+                  
+                }
                 EndDialog( hWnd, TRUE );
+              } break;
+            case IDC_NETWORK: // Combo Box Click 
+              {         
+   
+                if (SendDlgItemMessage(hWnd, IDC_NETWORK, BM_GETCHECK, 0, 0)) {
+                   // Activate 
+
+                  EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_MODE), TRUE);
+                  EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_NICKNAME), TRUE);
+                  EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_ROOMNAME), TRUE);
+                  EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_SERVER), TRUE);
+;                }
+                else {
+                  // Desactivate
+
+                  EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_MODE), FALSE);
+                  EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_NICKNAME), FALSE);
+                  EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_ROOMNAME), FALSE);
+                  EnableWindow(GetDlgItem(hWnd, IDC_NETWORK_SERVER), FALSE);
+                }
+
               } break;
             case IDCANCEL:
               {
@@ -188,7 +291,7 @@ INT_PTR CALLBACK DlgFunc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
   return pGlobal->DialogProcedure( hWnd, uMsg, wParam, lParam );
 }
 
-bool Open( SetupDialog::SETTINGS * settings )
+bool Open( SetupDialog::SETTINGS * settings)
 {
   CSetupDialog dlg;
   dlg.setup = settings;

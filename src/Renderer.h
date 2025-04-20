@@ -17,6 +17,7 @@ struct Settings
   int nHeight;
   WINDOWMODE windowMode;
   bool bVsync;
+  bool borderless = false;
 };
 
 struct KeyEvent
@@ -83,6 +84,7 @@ extern const char * shaderBuiltin;
 
 extern int nWidth;
 extern int nHeight;
+extern bool sizeChanged;
 
 bool OpenSetupDialog( Settings * settings );
 bool Open( Settings * settings );
