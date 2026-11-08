@@ -19,6 +19,9 @@
 #include "jsonxx.h"
 #include "Capture.h"
 #include "SetupDialog.h"
+#include <Network.h>
+#include "CommandLineArgs.h"
+
 
 unsigned int ParseColor( const std::string & color )
 {
@@ -71,9 +74,12 @@ int main( int argc, const char * argv[] )
   Misc::PlatformStartup();
 
   const char * configFile = "config.json";
+
+  CommandLineArgs::parse_args(argc, argv);
+
   if ( argc > 1 )
   {
-    configFile = argv[ 1 ];
+    configFile = CommandLineArgs::configFile;
     printf( "Loading config file '%s'...\n", configFile );
   }
   else
@@ -98,7 +104,7 @@ int main( int argc, const char * argv[] )
 
     options.parse( szConfig );
   }
-
+  Network::ParseSettings(&options);
   FFT::Create();
 
   bool skipSetupDialog = false;
@@ -108,10 +114,13 @@ int main( int argc, const char * argv[] )
   SetupDialog::SETTINGS settings;
   settings.sFFT.bUseRecordingDevice = true;
   settings.sFFT.pDeviceID = NULL;
+  settings.sFFT.sCaptureDeviceSearchString = "";
   if ( options.has<jsonxx::Object>( "audio" ) )
   {
     if ( options.get<jsonxx::Object>( "audio" ).has<jsonxx::Boolean>( "useInput" ) )
       settings.sFFT.bUseRecordingDevice = options.get<jsonxx::Object>( "audio" ).get<jsonxx::Boolean>( "useInput" );
+    if (options.get<jsonxx::Object>("audio").has<jsonxx::String>("captureDeviceSearchString"))
+      settings.sFFT.sCaptureDeviceSearchString = options.get<jsonxx::Object>("audio").get<jsonxx::String>("captureDeviceSearchString").c_str();
   }
 
   settings.sRenderer.bVsync = false;
@@ -132,13 +141,20 @@ int main( int argc, const char * argv[] )
       settings.sRenderer.nHeight = options.get<jsonxx::Object>( "window" ).get<jsonxx::Number>( "height" );
     if ( options.get<jsonxx::Object>( "window" ).has<jsonxx::Boolean>( "fullscreen" ) )
       settings.sRenderer.windowMode = options.get<jsonxx::Object>( "window" ).get<jsonxx::Boolean>( "fullscreen" ) ? Renderer::WINDOWMODE_FULLSCREEN : Renderer::WINDOWMODE_WINDOWED;
+    if (options.get<jsonxx::Object>("window").has<jsonxx::Boolean>( "borderless" ))
+      settings.sRenderer.borderless = options.get<jsonxx::Object>( "window" ).get<jsonxx::Boolean>( "borderless" );
+
   }
-  if ( !skipSetupDialog )
+
+  if ( !skipSetupDialog && !CommandLineArgs::skipDialog)
   {
     if ( !SetupDialog::Open( &settings ) )
     {
       return -1;
     }
+  }
+  else {
+    CommandLineArgs::replace(&settings.sRenderer);
   }
 #endif
 
@@ -198,6 +214,14 @@ int main( int argc, const char * argv[] )
         fFFTSmoothingFactor = options.get<jsonxx::Object>( "rendering" ).get<jsonxx::Number>( "fftSmoothFactor" );
       if ( options.get<jsonxx::Object>( "rendering" ).has<jsonxx::Number>( "fftAmplification" ) )
         FFT::fAmplification = options.get<jsonxx::Object>( "rendering" ).get<jsonxx::Number>( "fftAmplification" );
+      if (options.get<jsonxx::Object>("rendering").has<jsonxx::Boolean>("fftPeakNormalization"))
+        FFT::bPeakNormalization = options.get<jsonxx::Object>("rendering").get<jsonxx::Boolean>("fftPeakNormalization");
+      if (options.get<jsonxx::Object>("rendering").has<jsonxx::Boolean>("fftPreProcessing"))
+        FFT::bPreProcessing = options.get<jsonxx::Object>("rendering").get<jsonxx::Boolean>("fftPreProcessing");
+      if (options.get<jsonxx::Object>("rendering").has<jsonxx::Number>("fftPeakMinValue"))
+        FFT::fPeakMinValue = options.get<jsonxx::Object>("rendering").get<jsonxx::Number>("fftPeakMinValue");
+      if (options.get<jsonxx::Object>("rendering").has<jsonxx::Number>("fftPeakSmoothing"))
+        FFT::fPeakSmoothing = options.get<jsonxx::Object>("rendering").get<jsonxx::Number>("fftPeakSmoothing");
     }
 
     if ( options.has<jsonxx::Object>( "textures" ) )
@@ -319,10 +343,12 @@ int main( int argc, const char * argv[] )
   }
 
   Renderer::Texture * texPreviousFrame = Renderer::CreateRGBA8Texture();
-  Renderer::Texture * texFFT = Renderer::Create1DR32Texture( FFT_SIZE );
-  Renderer::Texture * texFFTSmoothed = Renderer::Create1DR32Texture( FFT_SIZE );
-  Renderer::Texture * texFFTIntegrated = Renderer::Create1DR32Texture( FFT_SIZE );
+  Renderer::Texture * texFFT = Renderer::Create1DR32Texture(FFT_BIN_SIZE);
+  Renderer::Texture * texFFTSmoothed = Renderer::Create1DR32Texture(FFT_BIN_SIZE);
+  Renderer::Texture * texFFTIntegrated = Renderer::Create1DR32Texture(FFT_BIN_SIZE);
 
+  // Overriding Name if we are in SENDER or GRABBER Network mode
+  Network::UpdateShaderFileName(&Renderer::szDefaultShaderFilename);
   bool shaderInitSuccessful = false;
   char szShader[ 65535 ];
   char szError[ 4096 ];
@@ -378,53 +404,77 @@ int main( int argc, const char * argv[] )
 
   int nMargin = 20;
 
-  bool bTexPreviewVisible = true;
+  bool bTexPreviewVisible = false;
 
-  editorOptions.rect = Scintilla::PRectangle( nMargin, nMargin, settings.sRenderer.nWidth - nMargin - nTexPreviewWidth - nMargin, settings.sRenderer.nHeight - nMargin * 2 - nDebugOutputHeight );
+  editorOptions.rect = Scintilla::PRectangle( nMargin, nMargin, Renderer::nWidth - nMargin - nTexPreviewWidth - nMargin, Renderer::nHeight - nMargin * 2 - nDebugOutputHeight );
   ShaderEditor mShaderEditor( surface );
   mShaderEditor.Initialise( editorOptions );
   mShaderEditor.SetText( szShader );
 
-  editorOptions.rect = Scintilla::PRectangle( nMargin, settings.sRenderer.nHeight - nMargin - nDebugOutputHeight, settings.sRenderer.nWidth - nMargin - nTexPreviewWidth - nMargin, settings.sRenderer.nHeight - nMargin );
+  editorOptions.rect = Scintilla::PRectangle( nMargin, Renderer::nHeight - nMargin - nDebugOutputHeight, Renderer::nWidth - nMargin - nTexPreviewWidth - nMargin, Renderer::nHeight - nMargin );
   ShaderEditor mDebugOutput( surface );
   mDebugOutput.Initialise( editorOptions );
   mDebugOutput.SetText( "" );
   mDebugOutput.SetReadOnly( true );
 
-  static float fftData[ FFT_SIZE ];
-  memset( fftData, 0, sizeof( float ) * FFT_SIZE );
-  static float fftDataSmoothed[ FFT_SIZE ];
-  memset( fftDataSmoothed, 0, sizeof( float ) * FFT_SIZE );
+ 
+  static float fftData[FFT_BIN_SIZE];
+  memset( fftData, 0, sizeof( float ) * FFT_BIN_SIZE);
+  static float fftDataSmoothed[FFT_BIN_SIZE];
+  memset( fftDataSmoothed, 0, sizeof( float ) * FFT_BIN_SIZE);
 
-  static float fftDataSlightlySmoothed[ FFT_SIZE ];
-  memset( fftDataSlightlySmoothed, 0, sizeof( float ) * FFT_SIZE );
-  static float fftDataIntegrated[ FFT_SIZE ];
-  memset( fftDataIntegrated, 0, sizeof( float ) * FFT_SIZE );
+  static float fftDataSlightlySmoothed[FFT_BIN_SIZE];
+  memset( fftDataSlightlySmoothed, 0, sizeof( float ) * FFT_BIN_SIZE);
+  static float fftDataIntegrated[FFT_BIN_SIZE];
+  memset( fftDataIntegrated, 0, sizeof( float ) * FFT_BIN_SIZE);
 
   bool bShowGui = true;
   Timer::Start();
   float fNextTick = 0.1f;
   float fLastTimeMS = Timer::GetTime();
+
+  Network::Init();
+  ShaderEditor mNetworkStatus(surface);
+  int networkHandleFontWidth;
+  if (!Network::IsOffline()) {
+    // Network Handle  
+    editorOptions.rect = Scintilla::PRectangle(Renderer::nWidth - nMargin - 100, Renderer::nHeight - nMargin - 50, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin);
+    editorOptions.nFontSize *= 2.5;
+    mNetworkStatus.Initialise(editorOptions);
+    mNetworkStatus.SetReadOnly(true);
+
+    std::string* handle = Network::GetHandle();
+    mNetworkStatus.SetText(handle->c_str());
+    networkHandleFontWidth = surface->WidthText(*mNetworkStatus.GetTextFont(), handle->c_str(), (int)handle->length()) * 1.1;
+    mNetworkStatus.SetPosition(Scintilla::PRectangle(Renderer::nWidth - nMargin - networkHandleFontWidth, Renderer::nHeight - nMargin - 50, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin - 50 + editorOptions.nFontSize));
+   
+  }
+
   while ( !Renderer::WantsToQuit() )
   {
+
+    //Network::CheckNetwork();
     bool newShader = false;
+    
     float time = Timer::GetTime() / 1000.0; // seconds
+    Network::SyncTime(&time);
     Renderer::StartFrame();
 
     for ( int i = 0; i < Renderer::mouseEventBufferCount; i++ )
     {
       if ( bShowGui )
       {
+        
         switch ( Renderer::mouseEventBuffer[ i ].eventType )
         {
           case Renderer::MOUSEEVENTTYPE_MOVE:
             mShaderEditor.ButtonMovePublic( Scintilla::Point( Renderer::mouseEventBuffer[ i ].x, Renderer::mouseEventBuffer[ i ].y ) );
             break;
           case Renderer::MOUSEEVENTTYPE_DOWN:
-            mShaderEditor.ButtonDown( Scintilla::Point( Renderer::mouseEventBuffer[ i ].x, Renderer::mouseEventBuffer[ i ].y ), time * 1000, false, false, false );
+            if(!Network::IsGrabber()) mShaderEditor.ButtonDown( Scintilla::Point( Renderer::mouseEventBuffer[ i ].x, Renderer::mouseEventBuffer[ i ].y ), time * 1000, false, false, false );
             break;
           case Renderer::MOUSEEVENTTYPE_UP:
-            mShaderEditor.ButtonUp( Scintilla::Point( Renderer::mouseEventBuffer[ i ].x, Renderer::mouseEventBuffer[ i ].y ), time * 1000, false );
+            if(!Network::IsGrabber()) mShaderEditor.ButtonUp( Scintilla::Point( Renderer::mouseEventBuffer[ i ].x, Renderer::mouseEventBuffer[ i ].y ), time * 1000, false );
             break;
           case Renderer::MOUSEEVENTTYPE_SCROLL:
             if ( Renderer::mouseEventBuffer[ i ].ctrl )
@@ -434,7 +484,7 @@ int main( int argc, const char * argv[] )
             }
             else
             {
-              mShaderEditor.WndProc( SCI_LINESCROLL, (int) ( -Renderer::mouseEventBuffer[ i ].x * fScrollXFactor ), (int) ( -Renderer::mouseEventBuffer[ i ].y * fScrollYFactor ) );
+              if (!Network::IsGrabber()) mShaderEditor.WndProc( SCI_LINESCROLL, (int) ( -Renderer::mouseEventBuffer[ i ].x * fScrollXFactor ), (int) ( -Renderer::mouseEventBuffer[ i ].y * fScrollYFactor ) );
             }
             break;
         }
@@ -449,19 +499,21 @@ int main( int argc, const char * argv[] )
       {
         if ( bTexPreviewVisible )
         {
-          mShaderEditor.SetPosition( Scintilla::PRectangle( nMargin, nMargin, settings.sRenderer.nWidth - nMargin, settings.sRenderer.nHeight - nMargin * 2 - nDebugOutputHeight ) );
-          mDebugOutput.SetPosition( Scintilla::PRectangle( nMargin, settings.sRenderer.nHeight - nMargin - nDebugOutputHeight, settings.sRenderer.nWidth - nMargin, settings.sRenderer.nHeight - nMargin ) );
+          mShaderEditor.SetPosition( Scintilla::PRectangle( nMargin, nMargin, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin * 2 - nDebugOutputHeight ) );
+          mDebugOutput.SetPosition( Scintilla::PRectangle( nMargin, Renderer::nHeight - nMargin - nDebugOutputHeight, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin ) );
           bTexPreviewVisible = false;
         }
         else
         {
-          mShaderEditor.SetPosition( Scintilla::PRectangle( nMargin, nMargin, settings.sRenderer.nWidth - nMargin - nTexPreviewWidth - nMargin, settings.sRenderer.nHeight - nMargin * 2 - nDebugOutputHeight ) );
-          mDebugOutput.SetPosition( Scintilla::PRectangle( nMargin, settings.sRenderer.nHeight - nMargin - nDebugOutputHeight, settings.sRenderer.nWidth - nMargin - nTexPreviewWidth - nMargin, settings.sRenderer.nHeight - nMargin ) );
+          mShaderEditor.SetPosition( Scintilla::PRectangle( nMargin, nMargin, Renderer::nWidth - nMargin - nTexPreviewWidth - nMargin, Renderer::nHeight - nMargin * 2 - nDebugOutputHeight ) );
+          mDebugOutput.SetPosition( Scintilla::PRectangle( nMargin, Renderer::nHeight - nMargin - nDebugOutputHeight, Renderer::nWidth - nMargin - nTexPreviewWidth - nMargin, Renderer::nHeight - nMargin ) );
           bTexPreviewVisible = true;
         }
+        
       }
       else if ( Renderer::keyEventBuffer[ i ].scanCode == FKEY( 5 ) || ( Renderer::keyEventBuffer[ i ].ctrl && Renderer::keyEventBuffer[ i ].scanCode == 'r' ) ) // F5
       {
+        Network::SetNeedRecompile(true);
         mShaderEditor.GetText( szShader, 65535 );
         if ( Renderer::ReloadShader( szShader, (int) strlen( szShader ), szError, 4096 ) )
         {
@@ -488,7 +540,7 @@ int main( int argc, const char * argv[] )
       {
         bShowGui = !bShowGui;
       }
-      else if ( bShowGui )
+      else if ( bShowGui && !Network::IsGrabber())
       {
         bool consumed = false;
         if ( Renderer::keyEventBuffer[ i ].scanCode )
@@ -510,10 +562,25 @@ int main( int argc, const char * argv[] )
 
       }
     }
-    Renderer::keyEventBufferCount = 0;
 
-    Renderer::SetShaderConstant( "fGlobalTime", time );
-    Renderer::SetShaderConstant( "v2Resolution", settings.sRenderer.nWidth, settings.sRenderer.nHeight );
+    Network::UpdateShader(&mShaderEditor, time, &midiRoutes);
+
+    Renderer::keyEventBufferCount = 0;
+    if (Network::ReloadShader()) {
+      mShaderEditor.GetText(szShader, 65535);
+      if (Renderer::ReloadShader(szShader, (int)strlen(szShader), szError, 4096))
+      {
+        // Shader compilation successful; we set a flag to save if the frame render was successful
+        // (If there is a driver crash, don't save.)
+        newShader = true;
+      }
+      else
+      {
+        mDebugOutput.SetText(szError);
+      }
+   }
+    Renderer::SetShaderConstant( "fGlobalTime", time + Network::TimeOffset());
+    Renderer::SetShaderConstant( "v2Resolution", Renderer::nWidth, Renderer::nHeight);
 
     float fTime = Timer::GetTime();
     Renderer::SetShaderConstant( "fFrameTime", ( fTime - fLastTimeMS ) / 1000.0f );
@@ -530,7 +597,7 @@ int main( int argc, const char * argv[] )
       Renderer::UpdateR32Texture( texFFT, fftData );
 
       const static float maxIntegralValue = 1024.0f;
-      for ( int i = 0; i < FFT_SIZE; i++ )
+      for ( int i = 0; i < FFT_BIN_SIZE; i++ )
       {
         fftDataSmoothed[ i ] = fftDataSmoothed[ i ] * fFFTSmoothingFactor + ( 1 - fFFTSmoothingFactor ) * fftData[ i ];
 
@@ -558,6 +625,7 @@ int main( int argc, const char * argv[] )
 
     Renderer::RenderFullscreenQuad();
 
+
     Renderer::CopyBackbufferToTexture( texPreviousFrame );
 
     Renderer::StartTextRendering();
@@ -568,19 +636,21 @@ int main( int argc, const char * argv[] )
       {
         mShaderEditor.Tick();
         mDebugOutput.Tick();
+        if(!Network::IsOffline()) mNetworkStatus.Tick();
         fNextTick = time + 0.1;
       }
 
       mShaderEditor.Paint();
       mDebugOutput.Paint();
+      if (!Network::IsOffline()) mNetworkStatus.Paint();
 
       Renderer::SetTextRenderingViewport( Scintilla::PRectangle( 0, 0, Renderer::nWidth, Renderer::nHeight ) );
 
       if ( bTexPreviewVisible )
       {
         int y1 = nMargin;
-        int x1 = settings.sRenderer.nWidth - nMargin - nTexPreviewWidth;
-        int x2 = settings.sRenderer.nWidth - nMargin;
+        int x1 = Renderer::nWidth - nMargin - nTexPreviewWidth;
+        int x2 = Renderer::nWidth - nMargin;
         for ( std::map<std::string, Renderer::Texture *>::iterator it = textures.begin(); it != textures.end(); it++ )
         {
           int y2 = y1 + nTexPreviewWidth * ( it->second->height / (float) it->second->width );
@@ -599,13 +669,28 @@ int main( int argc, const char * argv[] )
       char szLayout[ 255 ];
       Misc::GetKeymapName( szLayout );
       std::string sHelp = "F2 - toggle texture preview   F5 or Ctrl-R - recompile shader   F11 - hide GUI   Current keymap: ";
+     
       sHelp += szLayout;
       surface->DrawTextNoClip( Scintilla::PRectangle( 20, Renderer::nHeight - 20, 100, Renderer::nHeight ), *mShaderEditor.GetTextFont(), Renderer::nHeight - 5.0, sHelp.c_str(), (int) sHelp.length(), 0x80FFFFFF, 0x00000000 );
+    
     }
+    if(bShowGui && (Network::IsSender() && !Network::IsConnected()) || (Network::IsGrabber() && !Network::IsGrabberReceiving())) { // Activity Square, might store data to avoid recalculating font widht
+      int TexPreviewOffset = bTexPreviewVisible ? nTexPreviewWidth + nMargin : 0;
+      surface->RectangleDraw(Scintilla::PRectangle(Renderer::nWidth - nMargin - networkHandleFontWidth-10, Renderer::nHeight - nMargin - 50, Renderer::nWidth - nMargin - networkHandleFontWidth, Renderer::nHeight - nMargin - 50 + editorOptions.nFontSize), 0x00000000, 0xff8080FF);
 
-
+    }
+    if (bShowGui && Network::IsSender()) {
+      if (!Network::IsPinged()) {
+        surface->RectangleDraw(Scintilla::PRectangle(Renderer::nWidth - nMargin - networkHandleFontWidth - 21, Renderer::nHeight - nMargin - 50, Renderer::nWidth - nMargin - networkHandleFontWidth - 11, Renderer::nHeight - nMargin - 50 + editorOptions.nFontSize), 0x00000000, 0xffFF8080);
+      }
+    }
+    if (Renderer::sizeChanged) {
+      mShaderEditor.SetPosition(Scintilla::PRectangle(nMargin, nMargin, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin * 2 - nDebugOutputHeight));
+      mDebugOutput.SetPosition(Scintilla::PRectangle(nMargin, Renderer::nHeight - nMargin - nDebugOutputHeight, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin));
+      mNetworkStatus.SetPosition(Scintilla::PRectangle(Renderer::nWidth - nMargin - networkHandleFontWidth, Renderer::nHeight - nMargin - 50, Renderer::nWidth - nMargin, Renderer::nHeight - nMargin - 50 + editorOptions.nFontSize));
+      Renderer::sizeChanged = false;
+    }
     Renderer::EndTextRendering();
-
     Renderer::EndFrame();
 
     Capture::CaptureFrame();

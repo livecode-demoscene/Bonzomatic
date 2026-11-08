@@ -1,6 +1,6 @@
 
 #include <cstdio>
-
+#include "Network.h"
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -179,7 +179,13 @@ GLuint glhGUIProgram = 0;
 
 int nWidth = 0;
 int nHeight = 0;
-
+bool sizeChanged = false;
+void window_size_callback(GLFWwindow* window, int width, int height)
+{
+  nWidth = width;
+  nHeight = height;
+  sizeChanged = true;
+}
 void MatrixOrthoOffCenterLH( float * pout, float l, float r, float b, float t, float zn, float zf )
 {
   memset( pout, 0, sizeof( float ) * 4 * 4 );
@@ -254,14 +260,16 @@ bool Open( Renderer::Settings * settings )
 #endif
 
   // TODO: change in case of resize support
-  glfwWindowHint( GLFW_RESIZABLE, GLFW_FALSE );
+  glfwWindowHint( GLFW_RESIZABLE, GLFW_TRUE );
+  glfwWindowHint(GLFW_DECORATED, settings->borderless ? GLFW_FALSE : GLFW_TRUE);
 
   // Prevent fullscreen window minimize on focus loss
   glfwWindowHint( GLFW_AUTO_ICONIFY, GL_FALSE );
 
   GLFWmonitor * monitor = settings->windowMode == WINDOWMODE_FULLSCREEN ? glfwGetPrimaryMonitor() : NULL;
-
-  mWindow = glfwCreateWindow( nWidth, nHeight, "BONZOMATIC - GLFW edition", monitor, NULL );
+  char * windowsTitle = "BONZOMATIC - GLFW edition";
+  Network::GenerateWindowsTitle(&windowsTitle);
+  mWindow = glfwCreateWindow( nWidth, nHeight, windowsTitle, monitor, NULL );
   if ( !mWindow )
   {
     printf( "[GLFW] Window creation failed\n" );
@@ -283,7 +291,7 @@ bool Open( Renderer::Settings * settings )
   glfwSetCursorPosCallback( mWindow, cursor_position_callback );
   glfwSetMouseButtonCallback( mWindow, mouse_button_callback );
   glfwSetScrollCallback( mWindow, scroll_callback );
-
+  glfwSetWindowSizeCallback(mWindow, window_size_callback);
   glewExperimental = GL_TRUE;
   GLenum err = glewInit();
   if ( GLEW_OK != err )
@@ -591,6 +599,7 @@ void StartFrame()
 {
   glClearColor( 0.08f, 0.18f, 0.18f, 1.0f );
   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
+  glViewport(0, 0, nWidth, nHeight);
 }
 void EndFrame()
 {

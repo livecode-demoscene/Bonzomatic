@@ -75,16 +75,17 @@ if (APPLE OR WIN32)
     set(MACOSX_BUNDLE_LONG_VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
     set(MACOSX_BUNDLE_BUNDLE_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
     set(MACOSX_BUNDLE_COPYRIGHT "Copyright © 2014-2020 The Bonzomatic Contributors. All rights reserved.")
-  
+
     set(BZC_PROJECT_SRCS ${GUI_TYPE} ${BZC_PROJECT_SRCS})
-  
+
     find_library(COCOA_FRAMEWORK Cocoa)
     find_library(OPENGL_FRAMEWORK OpenGL)
     find_library(CARBON_FRAMEWORK Carbon)
     find_library(COREAUDIO_FRAMEWORK CoreAudio)
+    find_library(COREMIDI_FRAMEWORK CoreMIDI)
     find_library(AVFOUNDATION_FRAMEWORK AVFoundation)
     mark_as_advanced(COCOA_FRAMEWORK OPENGL_FRAMEWORK CARBON_FRAMEWORK COREAUDIO_FRAMEWORK AVFOUNDATION_FRAMEWORK)
-    set(PLATFORM_LIBS ${COCOA_FRAMEWORK} ${OPENGL_FRAMEWORK} ${CARBON_FRAMEWORK} ${COREAUDIO_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK})
+    set(PLATFORM_LIBS ${COCOA_FRAMEWORK} ${OPENGL_FRAMEWORK} ${CARBON_FRAMEWORK} ${COREAUDIO_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK} ${COREMIDI_FRAMEWORK})
   endif ()
 
 ##############################################################################
@@ -101,7 +102,7 @@ else ()
   option(BONZOMATIC_USE_SYSTEM_JSONXX "Use the systems installed version of Jsonxx instead of the vendored one (this build option is not supported by upstream)?" OFF)
   option(BONZOMATIC_USE_SYSTEM_SCINTILLA "Use the systems installed version of Scintilla instead of the vendored one (this build option is not supported by upstream)?" OFF)
   mark_as_advanced(BONZOMATIC_USE_SYSTEM_GLFW BONZOMATIC_USE_SYSTEM_GLEW BONZOMATIC_USE_SYSTEM_STB BONZOMATIC_USE_SYSTEM_MINIAUDIO BONZOMATIC_USE_SYSTEM_KISSFFT BONZOMATIC_USE_SYSTEM_JSONXX BONZOMATIC_USE_SYSTEM_SCINTILLA)
-  
+
   if (BONZOMATIC_USE_SYSTEM_GLFW OR BONZOMATIC_USE_SYSTEM_GLEW OR BONZOMATIC_USE_SYSTEM_STB OR BONZOMATIC_USE_SYSTEM_MINIAUDIO OR BONZOMATIC_USE_SYSTEM_KISSFFT OR BONZOMATIC_USE_SYSTEM_JSONXX OR BONZOMATIC_USE_SYSTEM_SCINTILLA)
     find_package(PkgConfig REQUIRED)
 
@@ -235,7 +236,7 @@ endif()
 ##############################################################################
 # NDI
 if (WIN32 AND BONZOMATIC_NDI)
-  if(DEFINED ENV{NDI_SDK_DIR}) 
+  if(DEFINED ENV{NDI_SDK_DIR})
     set(NDI_SDK_DIR "$ENV{NDI_SDK_DIR}")
   else()
     message(FATAL_ERROR "Could not find NDI SDK. The NDI_SDK_DIR environment variable must be set to the SDK path.")
@@ -248,6 +249,23 @@ if (WIN32 AND BONZOMATIC_NDI)
     set(BZC_PROJECT_LIBS ${BZC_PROJECT_LIBS} "${NDI_SDK_DIR}/Lib/x86/Processing.NDI.Lib.x86.lib")
   endif ()
 endif ()
+##############################################################################
+# MONGOOSE NETWORK
+set(BZC_PROJECT_INCLUDES ${BZC_PROJECT_INCLUDES} ${CMAKE_SOURCE_DIR}/external/mongoose)
+set(MONGOOSE_SRCS
+	${CMAKE_SOURCE_DIR}/external/mongoose/mongoose.c
+)
+add_library(bzc_mongoose STATIC ${MONGOOSE_SRCS})
+
+target_include_directories(bzc_mongoose PUBLIC ${CMAKE_SOURCE_DIR}/external/mongoose)
+if (MSVC)
+	target_compile_options(bzc_mongoose PUBLIC "$<$<CONFIG:Release>:/MT>")
+endif ()
+set(BZC_PROJECT_LIBS ${BZC_PROJECT_LIBS} bzc_mongoose)
+
+
+set(BZC_NETWORK_SRCS ${CMAKE_SOURCE_DIR}/src/platform_common/Network.cpp)
+source_group("Bonzomatic\\Network" FILES ${BZC_NETWORK_SRCS})
 
 ##############################################################################
 # SCINTILLA
@@ -331,7 +349,7 @@ if (APPLE)
   set(BZC_PLATFORM_SRCS
     ${CMAKE_SOURCE_DIR}/src/platform_glfw/Renderer.cpp
     ${CMAKE_SOURCE_DIR}/src/platform_common/FFT.cpp
-    ${CMAKE_SOURCE_DIR}/src/platform_common/MIDIDummy.cpp
+    ${CMAKE_SOURCE_DIR}/src/platform_osx/MIDI.cpp
     ${CMAKE_SOURCE_DIR}/src/platform_osx/Misc.mm
     ${CMAKE_SOURCE_DIR}/src/platform_x11/Timer.cpp
     ${CMAKE_SOURCE_DIR}/src/platform_osx/SetupDialog.cpp
@@ -419,7 +437,7 @@ else ()
 endif ()
 source_group("Bonzomatic\\Capture" FILES ${BZC_CAPTURE_SRCS})
 
-set(BZC_PROJECT_SRCS ${BZC_PROJECT_SRCS} ${BZC_PLATFORM_SRCS} ${BZC_RESOURCES_DATA} ${BZC_CAPTURE_SRCS})
+set(BZC_PROJECT_SRCS ${BZC_PROJECT_SRCS} ${BZC_PLATFORM_SRCS} ${BZC_RESOURCES_DATA} ${BZC_CAPTURE_SRCS} ${BZC_NETWORK_SRCS})
 
 set(BZC_PROJECT_INCLUDES ${CMAKE_SOURCE_DIR}/src ${BZC_PROJECT_INCLUDES})
 
@@ -452,6 +470,7 @@ if (WIN32)
 # MacOS
 elseif (APPLE)
   set_target_properties(${BZC_EXE_NAME} PROPERTIES MACOSX_BUNDLE ON MACOSX_BUNDLE_BUNDLE_NAME "Bonzomatic" MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/data/macosx/MacOSXBundleInfo.plist.in)
+  set_target_properties(${BZC_EXE_NAME} PROPERTIES XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS ${CMAKE_SOURCE_DIR}/data/macosx/entitlements.plist)
   if (BONZOMATIC_TOUCHBAR)
     target_compile_definitions(${BZC_EXE_NAME} PUBLIC -DBONZOMATIC_ENABLE_TOUCHBAR)
   endif ()

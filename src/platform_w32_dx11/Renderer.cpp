@@ -166,7 +166,7 @@ char defaultVertexShader[ 65536 ] =
 "}\n";
 
 bool run = true;
-
+bool sizeChanged =false;
 IDXGISwapChain * pSwapChain = NULL;
 ID3D11Device * pDevice = NULL;
 ID3D11DeviceContext * pContext = NULL;
